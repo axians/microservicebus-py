@@ -1,14 +1,15 @@
 # microservicebus-py
 
-With everything is about services communicating over a single queue managed be Orchestrator (which is also a service). Some services are internal (inherits from BaseService), while others are custom (inherits from CustomService).
-
-## Orchestrator (orchestrator_service)
-The *Orchestrator* is responsible for starting up services and correlate messages between then. All messages on the queue are of type QueueMessage (base_service) and contains information such as the `destination` and `action`. When the Orchestrator receives a message on the queue, it will forward the to designated service and function (*action*).
+With the microservicebus-py Node, everything is about services communicating over a single queue managed be Orchestrator (which is also a service). Some services are internal (inherits from BaseService), while others are custom (inherits from CustomService).
 
 ## BaseService (base_service)
 All services inherit from *BaseService* either directly or through *CustomService*. Inheriting from *BaseService* provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also use the `SubmitAction(destination, action, message)`. 
 
 ## Internal services
+>Internal services are used as any other service btu are never stopped. 
+
+### Orchestrator (orchestrator_service)
+The *Orchestrator* is responsible for starting up services and correlate messages between then. All messages on the queue are of type QueueMessage (base_service) and contains information such as the `destination` and `action`. When the Orchestrator receives a message on the queue, it will forward the to designated service and function (*action*).
 
 ### microServiceBusHandler (msb_handler)
 As the name implies the *microServiceBusHandler* is responsible for all communication with microServiceBus.com. When staring up the service will sign in to msb.com and receive a list of services and the iot hub provider service. After successful sign-in, the service will call the Orchestrator to start up the these services.
