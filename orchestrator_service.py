@@ -13,7 +13,7 @@ class Orchestrator(BaseService):
         super(Orchestrator, self).__init__(id, queue)
 
     async def Start(self):
-        # signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        # signals = (signal.SIGTERM, signal.SIGINT)
         # for s in signals:
         #     self.loop.add_signal_handler(
         #         s, lambda s=s: asyncio.create_task(self.shutdown(s, self.loop)))
@@ -34,11 +34,14 @@ class Orchestrator(BaseService):
 
         while True:
             msg = await self.queue.get()
-            service = next((srv for srv in self.services if srv.id == msg.destination), None)
-           
-            if service != None:
-                function = getattr(service, msg.action)
-                self.loop.create_task(function(msg))
+
+            if msg.destination == "*":
+                [await srv.StateUpdate(msg) for srv in self.services]
+            else:
+                service = next((srv for srv in self.services if srv.id == msg.destination), None)         
+                if service != None:
+                    function = getattr(service, msg.action)
+                    self.loop.create_task(function(msg))
 
             await asyncio.sleep(1)
 
@@ -51,7 +54,7 @@ class Orchestrator(BaseService):
         task.add_done_callback(self.service_completed)
         await self.Debug(f"Running {len(self.services)} services")
     
-    async def _stop_all_services(self, message):
+    async def _stop_custom_services(self, message):
         # First stop all custom services
         customServices = [service for service in self.services if isinstance(service, CustomService)]
         

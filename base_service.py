@@ -1,14 +1,5 @@
 import asyncio
-
-class QueueMessage:
-    def __init__(self, source, destination, action, message):
-        self.source = source
-        self.destination = destination
-        self.message = message,
-        self.action = action
-
-    def __repr__(self):
-        return f"source:{self.source} destination:{self.destination} message:{self.message}"
+from model import QueueMessage
 
 class BaseService:
     def __init__(self, id, queue):
@@ -25,8 +16,11 @@ class BaseService:
     async def Process(self, message):
         pass
     
+    async def StateUpdate(self, state):
+        pass
+
     async def Debug(self, message):
-        msg = QueueMessage(self.id, "logger", "Process", message)
+        msg = QueueMessage(self.id, "logger", "_debug", message)
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
             
@@ -45,13 +39,13 @@ class BaseService:
         asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 
-    async def StopAllServices(self):
-        msg = QueueMessage(self.id, "orchestrator", "_stop_all_services", "")
+    async def StopCustomServices(self):
+        msg = QueueMessage(self.id, "orchestrator", "_stop_custom_services", "")
         asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
     
-    async def Restart(self):
-        msg = QueueMessage(self.id, "msb", "_restart", "")
+    async def StartCustomServices(self):
+        msg = QueueMessage(self.id, "msb", "_start_custom_services", "")
         asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 

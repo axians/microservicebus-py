@@ -31,7 +31,7 @@ class microServiceBusHandler(BaseService):
         while True:
             await asyncio.sleep(1)
 
-    async def _restart(self, args):
+    async def _start_custom_services(self, args):
         async with aiohttp.ClientSession() as session:
             # create get request
             headers = {'Content-Type' : 'application-json'}

@@ -24,3 +24,5 @@ class MyService(CustomService):
         self.run = False
         await self.Debug(f"Stopped {self.id}")
     
+    async def StateUpdate(self, state):
+        print("")
