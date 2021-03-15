@@ -44,7 +44,7 @@ class microServiceBusHandler(BaseService):
                     microService = MicroService(service["name"], self.queue)
                     await self.StartService(microService)
     
-    async def debug(self, message):
+    async def _debug(self, message):
         if self.ready == True:
             async with aiohttp.ClientSession() as session:
                 # create get request

@@ -30,8 +30,8 @@ class BaseService:
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
             
-    async def SubmitMessage(self, destination, message):
-        msg = QueueMessage(self.id, destination, "Process", message)
+    async def SubmitMessage(self, message):
+        msg = QueueMessage(self.id, "com", "Process", message)
         asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
         

@@ -17,7 +17,7 @@ class MyService(CustomService):
         while self.run:
             msg_id = str(uuid.uuid4())
             await self.Debug(f"Submitting [{msg_id}]")
-            await self.SubmitMessage("com", msg_id)
+            await self.SubmitMessage( msg_id)
             await asyncio.sleep(self.interval)
     
     async def Stop(self):
