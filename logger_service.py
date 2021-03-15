@@ -8,4 +8,4 @@ class Logger(BaseService):
 
     async def Start(self):
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0)

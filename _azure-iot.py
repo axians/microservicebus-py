@@ -22,7 +22,7 @@ class AzureIoT(BaseService):
         
         await self.Debug("Com is started")
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0)
 
     async def Process(self, message):
         #await self.device_client.send_message(message.message[0])

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.7
-import asyncio, signal, logging
+import asyncio, logging
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(

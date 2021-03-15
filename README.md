@@ -53,4 +53,5 @@ await self.SubmitAction('MyOtherService', 'Process', message)
 ```
 
 ### StateUpdate
+State updates received by the *Com* service are forwarded to all services and accessible through the StateUpdate function
 

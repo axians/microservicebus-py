@@ -1,4 +1,4 @@
-import aiohttp, utils, importlib, asyncio
+import aiohttp, utils, importlib, asyncio, uuid, re, socket
 from base_service import BaseService
 
 class microServiceBusHandler(BaseService):
@@ -8,6 +8,9 @@ class microServiceBusHandler(BaseService):
         
 
     async def Start(self):
+        # hostname = socket.gethostname()
+        # ip_address = socket.gethostbyname(hostname)
+        # mac =':'.join(re.findall('..', '%012x' % uuid.getnode()))
         async with aiohttp.ClientSession() as session:
             # create get request
             headers = {'Content-Type' : 'application-json'}

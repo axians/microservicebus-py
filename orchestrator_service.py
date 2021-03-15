@@ -43,7 +43,7 @@ class Orchestrator(BaseService):
                     function = getattr(service, msg.action)
                     self.loop.create_task(function(msg))
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(0)
 
     async def _start_service(self, message):
         service = message.message[0]
