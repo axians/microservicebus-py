@@ -2,6 +2,29 @@
 
 With the microservicebus-py Node, everything is about services communicating over a single queue managed be Orchestrator (which is also a service). Some services are internal (inherits from BaseService), while others are custom (inherits from CustomService).
 
+## Requirements
+### Python 3 
+```bash
+sudo apt-get install python3.8
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10
+
+alias python='/usr/bin/python3.8'
+. ~/.bashrc
+```
+### Pip3
+```
+sudo apt-get install python3-pip
+```
+### asyncio
+```
+pip install asyncio
+```
+### aiohttp
+```
+pip install aiohttp
+```
+
+
 ## BaseService (base_service)
 All services inherit from *BaseService* either directly or through *CustomService*. Inheriting from *BaseService* provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also use the `SubmitAction(destination, action, message)`. 
 

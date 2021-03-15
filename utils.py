@@ -1,5 +1,4 @@
-import pip
-import importlib
+import pip, subprocess, sys, importlib
 
 def install(package):
     pip.main(['install', package])
@@ -9,9 +8,15 @@ def uninstall(package):
 
 def install_module(module):
     for package in module["packages"]:
-        try:
+        try:            
             importlib.import_module(package["name"])
             print(f'{package["package"]} is already installed..')
         except ImportError:
-            pip.main(['install', package])
-            print(f'{package["package"]} has been installed..')
+            print(f'Trying to install {package["package"]}...')
+            #pip.main(['install', package])
+            try:
+                subprocess.call([sys.executable, "-m", "pip", "install", "--user", package])
+                print(f'{package["package"]} has been installed..')
+            except:
+                e = sys.exc_info()[0]
+                print( e )
