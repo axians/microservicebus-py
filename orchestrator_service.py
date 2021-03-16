@@ -84,31 +84,19 @@ class Orchestrator(BaseService):
         print("*************************")
     
     async def shutdown(self, signal, loop, *args):
-        print(f"Received exit signal ...")
+        print()
+        print(f"Shutting down ...")
         self.run = False
-        # customServices = [service for service in self.services if isinstance(service, CustomService)]
-        
-        # for srv in self.services:
-        #     if(srv.id != "orchestrator"):
-        #         print(f"canceling {srv.id}")
-        #         srv.task.cancel()
 
-        # self.task.cancel()
+        # Calling all services to shutdown
         [await service.Stop() for service in self.services]
         
+        ## Terminating all tasks
         tasks = [t for t in asyncio.all_tasks() if t is not
                 asyncio.current_task()]
 
         [task.cancel() for task in tasks]
 
-        print(f"Cancelling {len(tasks)} outstanding tasks")
         await asyncio.gather(*tasks, return_exceptions=True)
-        print(f"Flushing metrics")
-        print(f"{len(asyncio.all_tasks())} running")
-        self.run = False
-        await asyncio.sleep(1)
-        print("Stopping loop")
         loop.stop()
-        print("Closing loop")
-        #loop.close()
         
