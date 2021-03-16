@@ -38,13 +38,20 @@ class Orchestrator(BaseService):
         while self.run:
             msg = await self.queue.get()
 
-            if msg.destination == "*":
-                [await srv.StateUpdate(msg) for srv in self.services]
-            else:
+            if msg.destination == "*": # Send to all services
+                for service in self.services:
+                    try:
+                        function = getattr(service, msg.action)
+                        self.loop.create_task(function(msg))
+                    except:
+                        await self.Debug(f"{service.id} has no function called {msg.action}")
+            else: # Send to one service
                 service = next((srv for srv in self.services if srv.id == msg.destination), None)         
                 if service != None:
                     function = getattr(service, msg.action)
                     self.loop.create_task(function(msg))
+                else:
+                    await self.Debug(f"There is no service called {msg.destination}")
 
             await asyncio.sleep(0)
 

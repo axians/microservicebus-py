@@ -124,7 +124,7 @@ class microServiceBusHandler(BaseService):
                     signin_response =  await response.json()
                     return signin_response
                 else:
-                    self.Debug("Unable to sign in")
+                    await self.Debug("Unable to sign in")
                     return False
         
                 

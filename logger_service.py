@@ -6,11 +6,6 @@ class Logger(BaseService):
         self.debug = True
         super(Logger, self).__init__(id, queue)
 
-    async def _debug(self, message):
-       print(f"mSB:[{message.source}] DEGUG: {message.message[0]}")
-       if self.debug:
-           await self.SubmitAction("msb", "_debug", message.message[0])
-
     async def Start(self):
         await self.Debug("Started")
         while True:
@@ -23,4 +18,13 @@ class Logger(BaseService):
             if self.debug != state["desired"]["msb-state"]["debug"]:
                 self.debug = state["desired"]["msb-state"]["debug"]
                 await self.Debug(f"Console debugging is set to {self.debug}")
-        
+
+    async def _debug(self, message):
+       print(f"mSB:[{message.source}] DEGUG: {message.message[0]}")
+       if self.debug:
+           await self.SubmitAction("msb", "_debug", message.message[0])
+    
+    async def _error(self, message):
+       print(f"mSB:[{message.source}] ERROR: {message.message[0]}")
+       if self.debug:
+           await self.SubmitAction("msb", "_debug", message.message[0])

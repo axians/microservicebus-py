@@ -29,7 +29,7 @@ class AzureIoT(BaseService):
         while True:
             await asyncio.sleep(0)
 
-    async def Process(self, message):
+    async def _sendEvent(self, message):
         if self.device_client.connected:
             await self.device_client.send_message(message.message[0])
             await self.Debug("Message sent to IoT Hub")
@@ -53,7 +53,6 @@ class AzureIoT(BaseService):
             self.twin = await self.device_client.get_twin()
             await self.SubmitAction("*", "StateUpdate", self.twin)
             
-
     async def method_request_handler(self, method_request):
         await self.Debug(f"Inbound call: {method_request.name}")
         # Determine how to respond to the method request based on the method name
