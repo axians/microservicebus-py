@@ -6,7 +6,6 @@ class MyService(CustomService):
         self.run = True
         self.queue = queue
         self.interval = 10
-        self.loop = asyncio.get_event_loop()
         super(MyService, self).__init__(id, queue)
 
     async def Start(self):
@@ -22,6 +21,7 @@ class MyService(CustomService):
     
     async def Stop(self):
         self.run = False
+        #await asyncio.sleep(self.interval)
         await self.Debug(f"Stopped {self.id}")
     
     async def StateUpdate(self, state):

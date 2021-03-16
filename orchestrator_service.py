@@ -1,4 +1,4 @@
-import asyncio, signal
+import asyncio, signal, os
 from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
@@ -14,10 +14,12 @@ class Orchestrator(BaseService):
         super(Orchestrator, self).__init__(id, queue)
 
     async def Start(self):
-        # signals = (signal.SIGTERM, signal.SIGINT)
-        # for s in signals:
-        #     self.loop.add_signal_handler(
-        #         s, lambda s=s: asyncio.create_task(self.shutdown(s, self.loop)))
+        # signals are not implemented in windows :(
+        if os.name != 'nt':
+            signals = (signal.SIGTERM, signal.SIGINT)
+            for s in signals:
+                self.loop.add_signal_handler(
+                    s, lambda s=s: asyncio.create_task(self.shutdown(s, self.loop)))
 
         #region    
         text = """
@@ -92,6 +94,7 @@ class Orchestrator(BaseService):
         #         srv.task.cancel()
 
         # self.task.cancel()
+        [await service.Stop() for service in self.services]
         
         tasks = [t for t in asyncio.all_tasks() if t is not
                 asyncio.current_task()]
@@ -99,10 +102,13 @@ class Orchestrator(BaseService):
         [task.cancel() for task in tasks]
 
         print(f"Cancelling {len(tasks)} outstanding tasks")
-        await asyncio.gather(*tasks, return_exceptions=False)
+        await asyncio.gather(*tasks, return_exceptions=True)
         print(f"Flushing metrics")
         print(f"{len(asyncio.all_tasks())} running")
-       
+        self.run = False
         await asyncio.sleep(1)
+        print("Stopping loop")
         loop.stop()
+        print("Closing loop")
+        #loop.close()
         
