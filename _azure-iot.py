@@ -30,7 +30,7 @@ class AzureIoT(BaseService):
             await asyncio.sleep(0)
 
     async def Stop(self):
-        print("Disconnecting device_client")
+        await self.Debug("Disconnecting device_client")
         await self.device_client.disconnect()
 
     async def _sendEvent(self, message):
