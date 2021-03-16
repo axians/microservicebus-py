@@ -32,6 +32,8 @@ class Orchestrator(BaseService):
         await self.StartService(logger)
         msbHandler = microServiceBusHandler("msb", self.queue)
         await self.StartService(msbHandler)
+        
+        await self.Debug("Started")
 
         while self.run:
             msg = await self.queue.get()

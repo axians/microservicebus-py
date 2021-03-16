@@ -13,7 +13,7 @@ class MyService(CustomService):
 
     async def Start(self):
         choices = string.ascii_lowercase + string.digits
-        await self.Debug(f"Started {self.id} interval={self.interval}")
+        await self.Debug(f"Started (interval={self.interval})")
         while self.run:
             msg_id = str(uuid.uuid4())
             await self.Debug(f"Submitting [{msg_id}]")

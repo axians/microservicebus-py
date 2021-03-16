@@ -14,7 +14,7 @@ class microServiceBusHandler(BaseService):
         
 
     async def Start(self):
-        await self.Debug("Starting")
+        
         settings = await self.get_settings()
 
         # If no sas key, try provision using mac address
@@ -36,8 +36,13 @@ class microServiceBusHandler(BaseService):
             await self.save_settings(create_node_request)
 
         # Sign in
-        await self.sign_in(self.base_uri, settings)
+        signin_response = await self.sign_in()
 
+        if(signin_response != False):
+            await self.start_com_service(signin_response)
+            await self.start_services(signin_response)
+
+        await self.Debug("Started")
         if self.ready:
             await self.Debug("...Node signed in successfully")
 
@@ -63,23 +68,26 @@ class microServiceBusHandler(BaseService):
         with open( self.msb_settings_path, 'w') as settings_file:
                     json.dump(settings, settings_file)
 
+    async def start_com_service(self, signin_response):
+        utils.install_module(signin_response["iotProvider"]["module"])
+
+        Com = getattr(importlib.import_module(signin_response["iotProvider"]["module"]["module"]),signin_response["iotProvider"]["module"]["name"])
+        com = Com("com", self.queue, signin_response["iotProvider"])
+        await self.StartService(com)
+        self.ready = True
+
+    async def start_services(self, signin_response):
+        for service in signin_response["services"]:
+            utils.install_module(service)
+            MicroService = getattr(importlib.import_module(service["module"]),service["name"])
+            microService = MicroService(service["name"], self.queue)
+            await self.StartService(microService)
+
     async def _start_custom_services(self, args):
-        async with aiohttp.ClientSession() as session:
-            # create get request
-            headers = {'Content-Type' : 'application-json'}
-            signin_request = await self.get_settings()
-            async with session.post(f"{self.base_uri}/api/signin", json = signin_request, headers = headers) as response:
-                if(response.ok):
-                    signin_response =  await response.json()
-                    
-                    for service in signin_response["services"]:
-                        utils.install_module(service)
-                        MicroService = getattr(importlib.import_module(service["module"]),service["name"])
-                        microService = MicroService(service["name"], self.queue)
-                        await self.StartService(microService)
-                else:
-                    self.Debug("Unable to start custom servies")
-    
+        signin_response = await self.sign_in()
+        if(signin_response != False):
+            await self.start_services(signin_response)
+
     async def _debug(self, message):
         if self.ready == True:
             async with aiohttp.ClientSession() as session:
@@ -107,27 +115,17 @@ class microServiceBusHandler(BaseService):
                 else:
                     return None
 
-    async def sign_in(self, base_uri, signin_request):
+    async def sign_in(self):
         async with aiohttp.ClientSession() as session:
             headers = {'Content-Type' : 'application/json'}
-
-            async with session.post(f"{base_uri}/api/signin", json = signin_request, headers = headers) as response:
+            settings = await self.get_settings()
+            async with session.post(f"{self.base_uri}/api/signin", json = settings, headers = headers) as response:
                 if(response.ok):
                     signin_response =  await response.json()
-                    
-                    for service in signin_response["services"]:
-                        utils.install_module(service)
-                        MicroService = getattr(importlib.import_module(service["module"]),service["name"])
-                        microService = MicroService(service["name"], self.queue)
-                        await self.StartService(microService)
-
-                    # Install IoT Provider
-                    utils.install_module(signin_response["iotProvider"]["module"])
-
-                    Com = getattr(importlib.import_module(signin_response["iotProvider"]["module"]["module"]),signin_response["iotProvider"]["module"]["name"])
-                    com = Com("com", self.queue, signin_response["iotProvider"])
-                    await self.StartService(com)
-                    self.ready = True
+                    return signin_response
+                else:
+                    self.Debug("Unable to sign in")
+                    return False
         
                 
         

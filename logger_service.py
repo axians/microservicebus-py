@@ -12,6 +12,7 @@ class Logger(BaseService):
            await self.SubmitAction("msb", "_debug", message.message[0])
 
     async def Start(self):
+        await self.Debug("Started")
         while True:
             await asyncio.sleep(0)
     
