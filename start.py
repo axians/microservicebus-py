@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.7
-import asyncio, logging
+import asyncio, logging,signal
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(
@@ -13,12 +13,12 @@ def main():
         orchestrator = Orchestrator("orchestrator", asyncio.Queue())
         orchestrator.loop.create_task(orchestrator.Start())
         orchestrator.loop.run_forever()
-        print("")
     except KeyboardInterrupt:
         logging.info("Process interrupted")
     finally:
         orchestrator.loop.close()
         logging.info("Successfully shutdown the Mayhem service.")
+
 
 if __name__ == "__main__":
     main()

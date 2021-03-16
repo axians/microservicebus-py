@@ -25,4 +25,4 @@ class MyService(CustomService):
         await self.Debug(f"Stopped {self.id}")
     
     async def StateUpdate(self, state):
-        print("")
+        await self.Debug(f"Received new state")

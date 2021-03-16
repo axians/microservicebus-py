@@ -1,16 +1,11 @@
 # microservicebus-py
 
-With the microservicebus-py Node, everything is about services communicating over a single queue managed be Orchestrator (which is also a service). Some services are internal (inherits from BaseService), while others are custom (inherits from CustomService).
+## Overview
+With the microservicebus-py Node, everything is about services communicating over a single queue managed by the `Orchestrator` (which is also a service). Some services are internal (inherits from BaseService), while others are custom (inherits from CustomService).
 
 ## Requirements
-### Python 3 
-```bash
-sudo apt-get install python3.8
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10
+### Python 3.8 
 
-alias python='/usr/bin/python3.8'
-. ~/.bashrc
-```
 ### Pip3
 ```
 sudo apt-get install python3-pip
@@ -26,19 +21,42 @@ pip install aiohttp
 
 
 ## BaseService (base_service)
-All services inherit from *BaseService* either directly or through *CustomService*. Inheriting from *BaseService* provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also use the `SubmitAction(destination, action, message)`. 
+All services inherit from *BaseService* either directly or through *CustomService*. Inheriting from *BaseService* provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also call `self.SubmitAction(destination, action, message)` to more flexibility is needed.
+
+For instance, if you had a custom service called `emailhandler` which would send emails through the *Process* function and you'd like to send a message to it you would write:
+
+```python
+message = {'to':'foo@bar.com', 'subject':'Hello', 'body':'...from foo'}
+await self.SubmitAction("emailhandler", "Process", message)
+```
+
+> Note that the action is set to "Process". All services inheriting from *BaseService* has a `Start`. `Stop` and `Proccess` function. However, you could have created a `SendEmail` function and set the action to "SendEmail". 
+
+
+If, on the other hand, you'd like to send a message to the IoT Hub you would set the *destination* to "com". However, there is already a simplified function called *SubmitMessage* predefined with both *destination* and *action*:
+
+```python
+message = {'ts':'2021-01-01 01:01:01', 'temperature':22}
+await self.SubmitMessage(message)
+```
+
+Similarly there is a predefined function to logging:
+```python
+await self.Debug("Hello from Python")
+```
+
 
 ## Internal services
->Internal services are used as any other service are never stopped. 
+>Internal services are used as any other service but are never stopped. 
 
 ### Orchestrator (orchestrator_service)
-The *Orchestrator* is responsible for starting up services and correlate messages between then. All messages on the queue are of type QueueMessage (base_service) and contains information such as the `destination` and `action`. When the Orchestrator receives a message on the queue, it will forward the to designated service and function (*action*).
+The *Orchestrator* is responsible for starting up services and correlate messages between then. All messages on the queue are of type QueueMessage (base_service) and contains information such as the `destination` and `action`. When the Orchestrator receives a message on the queue, it will resolve the destination and call the function (*action*).
 
 ### microServiceBusHandler (msb_handler)
 As the name implies the *microServiceBusHandler* is responsible for all communication with microServiceBus.com. When staring up the service will sign in to msb.com and receive a list of services and the iot hub provider service. After successful sign-in, the service will call the Orchestrator to start up the these services.
 
-The *microServiceBusHandler* also has two other services_
-* **_debug** - *Forwards console information to msb.com*
+The *microServiceBusHandler* also has two other functions
+* **_debug** - *used by the logger to forward console information to msb.com*
 * **_start_custom_services** - *(accessable through self.StartCustomServices) Downloads and starts up all CustomServices (not Com)*
 
 ### Logger (logger_service)

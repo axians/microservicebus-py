@@ -6,6 +6,7 @@ from base_service import BaseService, CustomService
 class Orchestrator(BaseService):
     def __init__(self, id, queue):
         
+        self.run = True
         self.services = [self]
         self.queue = queue
         self.loop = asyncio.get_event_loop()
@@ -32,7 +33,7 @@ class Orchestrator(BaseService):
         msbHandler = microServiceBusHandler("msb", self.queue)
         await self.StartService(msbHandler)
 
-        while True:
+        while self.run:
             msg = await self.queue.get()
 
             if msg.destination == "*":
@@ -59,7 +60,6 @@ class Orchestrator(BaseService):
         customServices = [service for service in self.services if isinstance(service, CustomService)]
         
         for srv in customServices:
-            print(f"canceling {srv.task.get_name()}")
             srv.task.cancel()
 
         [await service.Stop() for service in customServices]
@@ -68,26 +68,32 @@ class Orchestrator(BaseService):
         await self.Debug(f"Running {len(self.services)} services")
 
     def service_completed(x, fn):
-        print("")
         print("*************************")
-        print(f"{fn.get_name()} done")
+        print(f"{fn.get_name()} stopped")
         print("*************************")
-        print("")
     
-    async def shutdown(signal, loop, *args):
-        print(f"Received exit signal {signal.name}...")
-        print("Closing database connections")
-        print("Nacking outstanding messages")
+    async def shutdown(self, signal, loop, *args):
+        print(f"Received exit signal ...")
+        self.run = False
+        # customServices = [service for service in self.services if isinstance(service, CustomService)]
+        
+        # for srv in self.services:
+        #     if(srv.id != "orchestrator"):
+        #         print(f"canceling {srv.id}")
+        #         srv.task.cancel()
+
+        # self.task.cancel()
+        
         tasks = [t for t in asyncio.all_tasks() if t is not
                 asyncio.current_task()]
 
         [task.cancel() for task in tasks]
 
         print(f"Cancelling {len(tasks)} outstanding tasks")
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=False)
         print(f"Flushing metrics")
+        print(f"{len(asyncio.all_tasks())} running")
+       
+        await asyncio.sleep(1)
         loop.stop()
-
-
-
-
+        

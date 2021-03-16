@@ -16,27 +16,43 @@ class AzureIoT(BaseService):
     async def Start(self):
         await self.device_client.connect()
         self.twin = await self.device_client.get_twin()
+        await self.SubmitAction("*", "StateUpdate", self.twin)
 
-        if(self.twin["desired"]["msb-state"]["enabled"] == False):
-            await self.StopCustomServices()
-        
+        state_exists = "msb-state" in self.twin["desired"]
+        if state_exists:
+            if(self.twin["desired"]["msb-state"]["enabled"] == False):
+                await self.StopCustomServices()
+        else:
+            await self.Debug("msb-state does not exist in twin")
+                
         await self.Debug("Com is started")
         while True:
             await asyncio.sleep(0)
 
     async def Process(self, message):
-        #await self.device_client.send_message(message.message[0])
-        await self.Debug("Message sent to IoT Hub")
+        if self.device_client.connected:
+            await self.device_client.send_message(message.message[0])
+            await self.Debug("Message sent to IoT Hub")
+        else:
+            await self.Debug("Unable to send message to IoT Hub. Reason: Not connected")
     
     async def twin_patch_handler(self, patch):
-        if(self.twin["desired"]["msb-state"]["enabled"] != patch["msb-state"]["enabled"]):
-            if(patch["msb-state"]["enabled"] == False):
-                await self.StopCustomServices()
-            else:
-                await self.StartCustomServices()
+        local_state_exists = "msb-state" in self.twin["desired"]
+        patch_state_exists = "msb-state" in patch
 
-        await self.SubmitAction("*", "StateUpdate", patch)
-        self.twin = await self.device_client.get_twin()
+        if local_state_exists == False:
+            self.twin["desired"] = patch
+
+        if patch_state_exists:
+            if(self.twin["desired"]["msb-state"]["enabled"] != patch["msb-state"]["enabled"]):
+                if(patch["msb-state"]["enabled"] == False):
+                    await self.StopCustomServices()
+                else:
+                    await self.StartCustomServices()
+                    
+            self.twin = await self.device_client.get_twin()
+            await self.SubmitAction("*", "StateUpdate", self.twin)
+            
 
     async def method_request_handler(self, method_request):
         await self.Debug(f"Inbound call: {method_request.name}")

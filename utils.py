@@ -1,4 +1,5 @@
-import pip, subprocess, sys, importlib
+import subprocess, sys, importlib
+import pip._internal as pip
 
 def install(package):
     pip.main(['install', package])
@@ -10,13 +11,16 @@ def install_module(module):
     for package in module["packages"]:
         try:            
             importlib.import_module(package["name"])
-            print(f'{package["package"]} is already installed..')
+            #print(f'{package["package"]} is already installed..')
         except ImportError:
-            print(f'Trying to install {package["package"]}...')
-            #pip.main(['install', package])
+            #print(f'Trying to install {package["package"]}..')
             try:
-                subprocess.call([sys.executable, "-m", "pip", "install", "--user", package])
+                pip.main(['install', package["package"]])
+                # cmd = f"{sys.executable} -m pip install {package["package"]}"
+                # print(f"command: {cmd}")
+                # subprocess.check_call(cmd, shell=True)
+                #subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+                #subprocess.call([sys.executable, "-m", "pip", "install", "--user", package])
                 print(f'{package["package"]} has been installed..')
-            except:
-                e = sys.exc_info()[0]
-                print( e )
+            except TypeError as err:
+                print('Handling run-time error:', err)

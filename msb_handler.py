@@ -5,61 +5,80 @@ from base_service import BaseService
 class microServiceBusHandler(BaseService):
     def __init__(self, id, queue):
         self.ready = False
+        self.base_uri = "http://localhost:7071"
+        home = str(Path.home())
+        self.msb_dir = f"{home}/microServiceBus-pytest"
+        self.msb_settings_path = f"{home}/microServiceBus-pytest/settings.json"
+
         super(microServiceBusHandler, self).__init__(id, queue)
         
 
     async def Start(self):
-        base_uri = "http://localhost:7071"
-        settings = {
-            "hubUri": base_uri
-        }
-        home = str(Path.home())
-        msb_dir = f"{home}/microServiceBus-pytest"
-        msb_settings_path = f"{home}/microServiceBus-pytest/settings.json"
-
-        # Check if directory exists
-        if os.path.isdir(msb_dir) == False:
-            os.mkdir(msb_dir)
-
-        # Load settings file if exists 
-        if os.path.isfile(msb_settings_path):
-            with open(msb_settings_path) as f:
-                settings = json.load(f)
+        await self.Debug("Starting")
+        settings = await self.get_settings()
 
         # If no sas key, try provision using mac address
         sas_exists = "sas" in settings
         if(sas_exists == False):
-            create_node_request = await self.create_node(base_uri)
+            await self.Debug("First time signing in to mSB.com.")
+
+            create_node_request = await self.create_node(self.base_uri)
         
             sas_exists = "sas" in create_node_request
             if(sas_exists == False):
-                print(f"FAILED TO SIGN IN TO {base_uri}")
+                print(f"FAILED TO SIGN IN TO {self.base_uri}")
                 return
+
+            await self.Debug("...Node created successfully")
                 
             settings = create_node_request
             # Save settings file
-            with open( msb_settings_path, 'w') as settings_file:
-                    json.dump(create_node_request, settings_file)
-        
+            await self.save_settings(create_node_request)
+
         # Sign in
-        await self.sign_in(base_uri, settings)
-        
+        await self.sign_in(self.base_uri, settings)
+
         if self.ready:
+            await self.Debug("...Node signed in successfully")
+
             while True:
                 await asyncio.sleep(0)
+
+    async def get_settings(self):
+        settings = {
+            "hubUri": self.base_uri
+        }
+        # Check if directory exists
+        if os.path.isdir(self.msb_dir) == False:
+            os.mkdir(self.msb_dir)
+
+        # Load settings file if exists 
+        if os.path.isfile(self.msb_settings_path):
+            with open(self.msb_settings_path) as f:
+                settings = json.load(f)
+        
+        return settings
+
+    async def save_settings(self, settings):
+        with open( self.msb_settings_path, 'w') as settings_file:
+                    json.dump(settings, settings_file)
 
     async def _start_custom_services(self, args):
         async with aiohttp.ClientSession() as session:
             # create get request
             headers = {'Content-Type' : 'application-json'}
-            async with session.post('http://localhost:7071/api/signin', json = {}, headers = headers) as response:
-                signin_response =  await response.json()
-                
-                for service in signin_response["services"]:
-                    utils.install_module(service)
-                    MicroService = getattr(importlib.import_module(service["module"]),service["name"])
-                    microService = MicroService(service["name"], self.queue)
-                    await self.StartService(microService)
+            signin_request = await self.get_settings()
+            async with session.post(f"{self.base_uri}/api/signin", json = signin_request, headers = headers) as response:
+                if(response.ok):
+                    signin_response =  await response.json()
+                    
+                    for service in signin_response["services"]:
+                        utils.install_module(service)
+                        MicroService = getattr(importlib.import_module(service["module"]),service["name"])
+                        microService = MicroService(service["name"], self.queue)
+                        await self.StartService(microService)
+                else:
+                    self.Debug("Unable to start custom servies")
     
     async def _debug(self, message):
         if self.ready == True:
