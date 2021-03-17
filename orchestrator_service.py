@@ -55,7 +55,7 @@ class Orchestrator(BaseService):
                 else:
                     await self.Debug(f"There is no service called {msg.destination}")
 
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
     async def _start_service(self, message):
         service = message.message[0]

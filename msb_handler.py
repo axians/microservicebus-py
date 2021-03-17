@@ -47,7 +47,7 @@ class microServiceBusHandler(BaseService):
             await self.Debug("...Node signed in successfully")
 
             while True:
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
 
     async def get_settings(self):
         settings = {

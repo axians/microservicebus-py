@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.7
-import asyncio, logging,signal
+import asyncio, logging,os
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(
@@ -10,6 +10,7 @@ logging.basicConfig(
 
 def main():
     try:
+        print(f"pid: {os.getpid()}")
         orchestrator = Orchestrator("orchestrator", asyncio.Queue())
         orchestrator.loop.create_task(orchestrator.Start())
         orchestrator.loop.run_forever()

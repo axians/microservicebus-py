@@ -27,7 +27,7 @@ class AzureIoT(BaseService):
                 
         await self.Debug("Com is started")
         while True:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
     async def Stop(self):
         await self.Debug("Disconnecting device_client")

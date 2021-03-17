@@ -9,7 +9,7 @@ class Logger(BaseService):
     async def Start(self):
         await self.Debug("Started")
         while True:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
     
     async def StateUpdate(self, message):
         state = message.message[0]

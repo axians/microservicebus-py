@@ -1,4 +1,4 @@
-import asyncio
+import asyncio,os
 from model import QueueMessage
 
 class BaseService:
