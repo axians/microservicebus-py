@@ -48,7 +48,7 @@ class Orchestrator(BaseService):
                     except:
                         await self.Debug(f"{service.id} has no function called {msg.action}")
             else: # Send to one service
-                service = next((srv for srv in self.services if srv.id == msg.destination), None)         
+                service = next((srv for srv in self.services if srv.id == msg.destination), None)   
                 if service != None:
                     function = getattr(service, msg.action)
                     self.loop.create_task(function(msg))

@@ -11,6 +11,7 @@ logging.basicConfig(
 def main():
     try:
         print(f"pid: {os.getpid()}")
+        
         orchestrator = Orchestrator("orchestrator", asyncio.Queue())
         orchestrator.loop.create_task(orchestrator.Start())
         orchestrator.loop.run_forever()

@@ -5,7 +5,7 @@ from base_service import BaseService
 class microServiceBusHandler(BaseService):
     def __init__(self, id, queue):
         self.ready = False
-        self.base_uri = "http://localhost:7071"
+        self.base_uri = "https://microservicebus-functions-stage.azurewebsites.net"
         home = str(Path.home())
         self.msb_dir = f"{home}/microServiceBus-pytest"
         self.msb_settings_path = f"{home}/microServiceBus-pytest/settings.json"
@@ -93,7 +93,7 @@ class microServiceBusHandler(BaseService):
             async with aiohttp.ClientSession() as session:
                 # create get request
                 headers = {'Content-Type' : 'application-json'}
-                await session.post('http://localhost:7071/api/debug', json = {"message": message.message[0]}, headers = headers)
+                await session.post(f"{self.base_uri}/api/debug", json = {"message": message.message[0]}, headers = headers)
     
     async def create_node(self, base_uri):
         async with aiohttp.ClientSession() as session:

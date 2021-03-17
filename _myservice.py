@@ -1,11 +1,16 @@
-import asyncio, json, string, uuid
+import asyncio, json, string, uuid, utils
 from base_service import CustomService
+from azure.iot.device.aio import IoTHubDeviceClient
 
 class MyService(CustomService):
     def __init__(self, id, queue):
         self.run = True
         self.queue = queue
-        self.interval = 10
+        self.interval = 10,
+        utils.install_module("azure.iot.device")
+        IoTHubDeviceClient = getattr("azure.iot.device.aio")
+
+        #from azure.iot.device.aio import IoTHubDeviceClient
         super(MyService, self).__init__(id, queue)
 
     async def Start(self):
