@@ -63,14 +63,12 @@ class BaseService:
     # package = pip package E.g "azure-iot-device"
     # module = module name E.g "azure.iot.device.aio" 
     # name = name of object E.g "IoTHubDeviceClient"
-    async def AddPipPackage(self, package, module, name):
+    def AddPipPackage(self, package, module, name):
         try:
             try:
                 importlib.import_module(module)
-                print("success") 
             except:
                 pip.main(['install', package])
-                print("failed")
         except:
             importlib.import_module(module)
 
