@@ -11,7 +11,6 @@ import requests
 from pathlib import Path
 from base_service import BaseService
 
-
 class microServiceBusHandler(BaseService):
     def __init__(self, id, queue):
         self.ready = False
@@ -116,7 +115,7 @@ class microServiceBusHandler(BaseService):
                 module = importlib.util.module_from_spec(spec) 
                 spec.loader.exec_module(module)
                 MicroService = getattr(module, service["name"])
-                microService = MicroService(service["name"], self.queue)
+                microService = MicroService(service["name"], self.queue, service['settings']['config']) #(id, queue, config)
                 await self.StartService(microService)
             except Exception as e:
                 print(e)
