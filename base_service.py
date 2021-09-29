@@ -71,9 +71,11 @@ class BaseService:
         try:
             try:
                 importlib.import_module(module)
-            except:
+            except Exception as e1:
+                print (e1)
                 pip.main(['install', package])
-        except:
+        except Exception as e2:
+            print(e2)
             importlib.import_module(module)
 
         Package = getattr(importlib.import_module(module), name)

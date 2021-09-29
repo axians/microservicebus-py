@@ -23,56 +23,58 @@ class microServiceBusHandler(BaseService):
         super(microServiceBusHandler, self).__init__(id, queue)
 
     async def Start(self):
-
-        settings = await self.get_settings()
-
-        # If no sas key, try provision using mac address
-        sas_exists = "sas" in settings
-        if(sas_exists == False):
-            await self.Debug("First time signing in to mSB.com.")
-
-            create_node_request = await self.create_node(self.base_uri)
-
-            sas_exists = "sas" in create_node_request
+        try:
+            settings = await self.get_settings()
+            
+            # If no sas key, try provision using mac address
+            sas_exists = "sas" in settings
             if(sas_exists == False):
-                print(f"FAILED TO SIGN IN TO {self.base_uri}")
-                return
+                await self.Debug("First time signing in to mSB.com.")
 
-            await self.Debug("...Node created successfully")
+                create_node_request = await self.create_node(self.base_uri)
 
-            settings = create_node_request
-            # Save settings file
-            await self.save_settings(create_node_request)
+                sas_exists = "sas" in create_node_request
+                if(sas_exists == False):
+                    print(f"FAILED TO SIGN IN TO {self.base_uri}")
+                    return
 
-        # Sign in
-        signin_response = await self.sign_in()
-        if(signin_response != False):
-            try: 
-                if os.path.isdir(self.service_path) == False:
-                    os.mkdir(self.service_path)
-            except OSError:
-                print ("Creation of the directory %s failed" % path)
-                print(OSError)
-            else:
-                # Download IoT Provider File in service folder
-                uri = signin_response['iotProvider']['module']['uri']
-                IoTProviderFile = requests.get(uri, allow_redirects=True)
-                IoTProviderFileName = os.path.join(self.service_path, signin_response['iotProvider']['module']['module'] + ".py")
-                open(IoTProviderFileName, 'wb+').write(IoTProviderFile.content)
-                await self.start_com_service(signin_response)
-                # Download Services in service folder
-                for service in signin_response['services']:
-                    uri = service['uri']
-                    serviceFile = requests.get(uri, allow_redirects=True)
-                    serviceFileName = os.path.join(self.service_path, service['name'] + ".py")
-                    open(serviceFileName, 'wb+').write(serviceFile.content)
-                await self.start_services(signin_response)
-        await self.Debug("Started")
-        if self.ready:
-            await self.Debug("...Node signed in successfully")
+                await self.Debug("...Node created successfully")
 
-            while True:
-                await asyncio.sleep(0.1)
+                settings = create_node_request
+                # Save settings file
+                await self.save_settings(create_node_request)
+
+            # Sign in
+            signin_response = await self.sign_in()
+            if(signin_response != False):
+                try: 
+                    if os.path.isdir(self.service_path) == False:
+                        os.mkdir(self.service_path)
+                except OSError:
+                    print ("Creation of the directory %s failed" % path)
+                    print(OSError)
+                else:
+                    # Download IoT Provider File in service folder
+                    uri = signin_response['iotProvider']['module']['uri']
+                    IoTProviderFile = requests.get(uri, allow_redirects=True)
+                    IoTProviderFileName = os.path.join(self.service_path, signin_response['iotProvider']['module']['module'] + ".py")
+                    open(IoTProviderFileName, 'wb+').write(IoTProviderFile.content)
+                    await self.start_com_service(signin_response)
+                    # Download Services in service folder
+                    for service in signin_response['services']:
+                        uri = service['uri']
+                        serviceFile = requests.get(uri, allow_redirects=True)
+                        serviceFileName = os.path.join(self.service_path, service['name'] + ".py")
+                        open(serviceFileName, 'wb+').write(serviceFile.content)
+                    await self.start_services(signin_response)
+            await self.Debug("Started")
+            if self.ready:
+                await self.Debug("...Node signed in successfully")
+
+                while True:
+                    await asyncio.sleep(0.1)
+        except Exception as e:
+            print(f"Error in msb.start: {e}")
 
     async def get_settings(self):
         settings = {
@@ -86,13 +88,12 @@ class microServiceBusHandler(BaseService):
         if os.path.isfile(self.msb_settings_path):
             with open(self.msb_settings_path) as f:
                 settings = json.load(f)
-        
         return settings
 
     async def save_settings(self, settings):
         with open( self.msb_settings_path, 'w') as settings_file:
                     json.dump(settings, settings_file)
-
+ 
     async def start_com_service(self, signin_response):
         try:
             IoTProviderFilePath = os.path.join(self.service_path, signin_response['iotProvider']['module']['module'] + ".py")
@@ -107,9 +108,10 @@ class microServiceBusHandler(BaseService):
             print(e)
 
     async def start_services(self, signin_response):
-        
+        print(f"msb.start_services")
         for service in signin_response["services"]:
             try:
+                print(f"msb.start_services starting: {self.service_path, service['name']} module: {service['module']}")
                 serviceFilePath = os.path.join(self.service_path, service['name'] + ".py")
                 spec = importlib.util.spec_from_file_location(service['module'], serviceFilePath)
                 module = importlib.util.module_from_spec(spec) 
@@ -121,9 +123,12 @@ class microServiceBusHandler(BaseService):
                 print(e)
 
     async def _start_custom_services(self, args):
+        print(f"msb.start: _start_custom_services")
         signin_response = await self.sign_in()
         if(signin_response != False):
             await self.start_services(signin_response)
+        
+        print(f"msb.start: _start_custom_services...done")
 
     async def _debug(self, message):
         if self.ready == True:
@@ -150,6 +155,7 @@ class microServiceBusHandler(BaseService):
                     create_response =  await response.json()
                     return create_response
                 else:
+                    print(f"msb.start: create_node...failed. ")
                     return None
 
     async def sign_in(self):
