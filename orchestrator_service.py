@@ -87,7 +87,8 @@ class Orchestrator(BaseService):
         print()
         print(f"Shutting down ...")
         self.run = False
-
+        # Shut down signalr connection
+        self.connection.stop()
         # Calling all services to shutdown
         [await service.Stop() for service in self.services]
         

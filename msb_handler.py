@@ -1,27 +1,30 @@
-import aiohttp
-import utils
-import importlib
+#region Imports
+import time
 import asyncio
 import uuid
 import re
+import os
+import sys
 import socket
 import os
 import json
-import requests
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
 from base_service import BaseService
-
+#endregion
 class microServiceBusHandler(BaseService):
+    #region Constructor
     def __init__(self, id, queue):
         self.ready = False
-        self.base_uri = "https://microservicebus-functions-stage.azurewebsites.net"
+        self.base_uri = "https://microservicebus.com/nodeHub"
         home = str(Path.home())
-        self.msb_dir = f"{home}/microServiceBus-pytest"
+        self.msb_dir = f"{home}/msb-py"
         self.service_path = f"{self.msb_dir}/services"
-        self.msb_settings_path = f"{home}/microServiceBus-pytest/settings.json"
-
+        self.msb_settings_path = f"{home}/msb-py/settings.json"
+        
         super(microServiceBusHandler, self).__init__(id, queue)
-
+    #endregion
+    #region Base functions
     async def Start(self):
         try:
             settings = await self.get_settings()
@@ -29,53 +32,18 @@ class microServiceBusHandler(BaseService):
             # If no sas key, try provision using mac address
             sas_exists = "sas" in settings
             if(sas_exists == False):
-                await self.Debug("First time signing in to mSB.com.")
+                await self.Debug("Create node using mac address")
 
-                create_node_request = await self.create_node(self.base_uri)
+                await self.create_node()
+            else:
+                await self.sign_in(settings)
 
-                sas_exists = "sas" in create_node_request
-                if(sas_exists == False):
-                    print(f"FAILED TO SIGN IN TO {self.base_uri}")
-                    return
-
-                await self.Debug("...Node created successfully")
-
-                settings = create_node_request
-                # Save settings file
-                await self.save_settings(create_node_request)
-
-            # Sign in
-            signin_response = await self.sign_in()
-            if(signin_response != False):
-                try: 
-                    if os.path.isdir(self.service_path) == False:
-                        os.mkdir(self.service_path)
-                except OSError:
-                    print ("Creation of the directory %s failed" % path)
-                    print(OSError)
-                else:
-                    # Download IoT Provider File in service folder
-                    uri = signin_response['iotProvider']['module']['uri']
-                    IoTProviderFile = requests.get(uri, allow_redirects=True)
-                    IoTProviderFileName = os.path.join(self.service_path, signin_response['iotProvider']['module']['module'] + ".py")
-                    open(IoTProviderFileName, 'wb+').write(IoTProviderFile.content)
-                    await self.start_com_service(signin_response)
-                    # Download Services in service folder
-                    for service in signin_response['services']:
-                        uri = service['uri']
-                        serviceFile = requests.get(uri, allow_redirects=True)
-                        serviceFileName = os.path.join(self.service_path, service['name'] + ".py")
-                        open(serviceFileName, 'wb+').write(serviceFile.content)
-                    await self.start_services(signin_response)
-            await self.Debug("Started")
-            if self.ready:
-                await self.Debug("...Node signed in successfully")
-
-                while True:
-                    await asyncio.sleep(0.1)
+            while True:
+                await asyncio.sleep(0.1)
         except Exception as e:
             print(f"Error in msb.start: {e}")
-
+    #endregion
+    #region Helpers
     async def get_settings(self):
         settings = {
             "hubUri": self.base_uri
@@ -93,82 +61,68 @@ class microServiceBusHandler(BaseService):
     async def save_settings(self, settings):
         with open( self.msb_settings_path, 'w') as settings_file:
                     json.dump(settings, settings_file)
- 
-    async def start_com_service(self, signin_response):
-        try:
-            IoTProviderFilePath = os.path.join(self.service_path, signin_response['iotProvider']['module']['module'] + ".py")
-            spec = importlib.util.spec_from_file_location(signin_response['iotProvider']['module']['name'], IoTProviderFilePath )
-            module = importlib.util.module_from_spec(spec) 
-            spec.loader.exec_module(module)
-            Com = getattr(module, signin_response['iotProvider']['module']['name'])
-            com = Com("com", self.queue, signin_response["iotProvider"])
-            await self.StartService(com)
-            self.ready = True
-        except Exception as e:
-            print(e)
+    #endregion
+    #region SignalR event listeners
+    async def set_up_signalr(self):
+        # Settings
+        self.connection = HubConnectionBuilder()\
+            .with_url(self.base_uri, options={"verify_ssl": False}) \
+            .with_automatic_reconnect({
+                "type": "interval",
+                "keep_alive_interval": 10,
+                "intervals": [1, 3, 5, 6, 7, 87, 3]
+            }).build()
 
-    async def start_services(self, signin_response):
-        print(f"msb.start_services")
-        for service in signin_response["services"]:
-            try:
-                print(f"msb.start_services starting: {self.service_path, service['name']} module: {service['module']}")
-                serviceFilePath = os.path.join(self.service_path, service['name'] + ".py")
-                spec = importlib.util.spec_from_file_location(service['module'], serviceFilePath)
-                module = importlib.util.module_from_spec(spec) 
-                spec.loader.exec_module(module)
-                MicroService = getattr(module, service["name"])
-                microService = MicroService(service["name"], self.queue, service['settings']['config']) #(id, queue, config)
-                await self.StartService(microService)
-            except Exception as e:
-                print(e)
+        self.connection.keepAliveIntervalInMilliseconds = 1000 * 60 * 3
+        self.connection.serverTimeoutInMilliseconds = 1000 * 60 * 6
+        # Default listeners
+        self.connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
+        self.connection.on_close(lambda: print("connection closed"))
+        self.connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
+        # mSB.com listeners
+        self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in(sign_in_info[0], True))
+        self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
+        self.connection.on('ping', lambda conn_id: self.ping_response(conn_id[0]))
+        self.connection.on('errorMessage', print)
+        self.connection.on('restart', lambda args: os.execv(sys.executable, ['python'] + sys.argv))
+        self.connection.on('reboot', lambda args: os.system("sudo reboot"))
 
-    async def _start_custom_services(self, args):
-        print(f"msb.start: _start_custom_services")
-        signin_response = await self.sign_in()
-        if(signin_response != False):
-            await self.start_services(signin_response)
-        
-        print(f"msb.start: _start_custom_services...done")
+        self.connection.start()
+        time.sleep(1)
+    #endregion
+    #region SignalR callback functions
+    async def create_node(self):
 
-    async def _debug(self, message):
-        if self.ready == True:
-            async with aiohttp.ClientSession() as session:
-                # create get request
-                headers = {'Content-Type' : 'application-json'}
-                await session.post(f"{self.base_uri}/api/debug", json = {"message": message.message[0]}, headers = headers)
+        mac =':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        self.connection.send("createNodeFromMacAddress", [mac])
+
+    async def sign_in(self, settings, first_sign_in):
+        if(first_sign_in == True):
+            self.Debug("Node created successfully")
+            await self.save_settings(settings)
+
+        self.Debug("Signing in")
+        hostData = {
+            "id": "",
+            "connectionId": "",
+            "Name": settings["nodeName"],
+            "machineName": socket.gethostname(),
+            "OrganizationID": settings["organizationId"],
+            "npmVersion": "3.12.3",
+            "sas": settings["sas"],
+            "recoveredSignIn": False,
+            "ipAddresses": socket.gethostbyname(socket.gethostname()),
+            "macAddresses": ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        }
+        self.connection.send("signInAsync", [hostData])
+
+    def successful_sign_in(self, sign_in_response):
+        self.Debug(f'Node {sign_in_response["nodeName"]} signed in successfully')
+        self.save_settings(sign_in_response)
+
+    async def ping_response(self, conn_id):
+        settings = await self.get_settings()
+        self.connection.send("pingResponse", [settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
     
-    async def create_node(self, base_uri):
-        async with aiohttp.ClientSession() as session:
-            # create get request
-            hostname = socket.gethostname()
-            ip = socket.gethostbyname(hostname)
-            mac =':'.join(re.findall('..', '%012x' % uuid.getnode()))
-            create_request = {
-                'hostname':hostname, 
-                'ip':ip, 
-                'mac':mac
-            }
-            headers = {'Content-Type' : 'application/json'}
+    #endregion
 
-            async with session.post(f"{base_uri}/api/create", json=create_request, headers = headers) as response:
-                if(response.ok):
-                    create_response =  await response.json()
-                    return create_response
-                else:
-                    print(f"msb.start: create_node...failed. ")
-                    return None
-
-    async def sign_in(self):
-        async with aiohttp.ClientSession() as session:
-            headers = {'Content-Type' : 'application/json'}
-            settings = await self.get_settings()
-            async with session.post(f"{self.base_uri}/api/signin", json = settings, headers = headers) as response:
-                if(response.ok):
-                    signin_response =  await response.json()
-                    return signin_response
-                else:
-                    await self.Debug("Unable to sign in")
-                    return False
-        
-                
-        
