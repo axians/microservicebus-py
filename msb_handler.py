@@ -27,7 +27,8 @@ class microServiceBusHandler(BaseService):
     #region Base functions
     async def Start(self):
         try:
-            settings = await self.get_settings()
+            await self.set_up_signalr()
+            settings = self.get_settings()
             
             # If no sas key, try provision using mac address
             sas_exists = "sas" in settings
@@ -36,7 +37,7 @@ class microServiceBusHandler(BaseService):
 
                 await self.create_node()
             else:
-                await self.sign_in(settings)
+                await self.sign_in(settings, False)
 
             while True:
                 await asyncio.sleep(0.1)
@@ -44,7 +45,7 @@ class microServiceBusHandler(BaseService):
             print(f"Error in msb.start: {e}")
     #endregion
     #region Helpers
-    async def get_settings(self):
+    def get_settings(self):
         settings = {
             "hubUri": self.base_uri
         }
@@ -58,7 +59,7 @@ class microServiceBusHandler(BaseService):
                 settings = json.load(f)
         return settings
 
-    async def save_settings(self, settings):
+    def save_settings(self, settings):
         with open( self.msb_settings_path, 'w') as settings_file:
                     json.dump(settings, settings_file)
     #endregion
@@ -92,16 +93,16 @@ class microServiceBusHandler(BaseService):
     #endregion
     #region SignalR callback functions
     async def create_node(self):
-
         mac =':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        await self.Debug(mac)
         self.connection.send("createNodeFromMacAddress", [mac])
 
-    async def sign_in(self, settings, first_sign_in):
+    def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
-            self.Debug("Node created successfully")
-            await self.save_settings(settings)
+            print("Node created successfully")
+            self.save_settings(settings)
 
-        self.Debug("Signing in")
+        print("Signing in")
         hostData = {
             "id": "",
             "connectionId": "",
@@ -114,14 +115,15 @@ class microServiceBusHandler(BaseService):
             "ipAddresses": socket.gethostbyname(socket.gethostname()),
             "macAddresses": ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         }
-        self.connection.send("signInAsync", [hostData])
+        print(hostData)
+        self.connection.send("signIn", [hostData])
 
     def successful_sign_in(self, sign_in_response):
-        self.Debug(f'Node {sign_in_response["nodeName"]} signed in successfully')
+        print('Node ' + sign_in_response["nodeName"] + ' signed in successfully')
         self.save_settings(sign_in_response)
 
-    async def ping_response(self, conn_id):
-        settings = await self.get_settings()
+    def ping_response(self, conn_id):
+        settings = self.get_settings()
         self.connection.send("pingResponse", [settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
     
     #endregion
