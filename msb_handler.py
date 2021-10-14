@@ -37,12 +37,16 @@ class microServiceBusHandler(BaseService):
 
                 await self.create_node()
             else:
-                await self.sign_in(settings, False)
+                self.sign_in(settings, False)
 
             while True:
                 await asyncio.sleep(0.1)
         except Exception as e:
             print(f"Error in msb.start: {e}")
+    
+    async def _debug(self, message):
+        #print(message)
+        pass
     #endregion
     #region Helpers
     def get_settings(self):
@@ -83,7 +87,8 @@ class microServiceBusHandler(BaseService):
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
-        self.connection.on('ping', lambda conn_id: self.ping_response(conn_id[0]))
+        self.connection.on("ping", lambda conn_id: self.ping_response(conn_id[0]))
+        #self.connection.on('ping', lambda x: print("BAJS"))
         self.connection.on('errorMessage', print)
         self.connection.on('restart', lambda args: os.execv(sys.executable, ['python'] + sys.argv))
         self.connection.on('reboot', lambda args: os.system("sudo reboot"))

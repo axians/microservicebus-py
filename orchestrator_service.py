@@ -1,4 +1,4 @@
-import asyncio, signal, os
+import asyncio, signal, os, urllib3
 from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
@@ -10,7 +10,8 @@ class Orchestrator(BaseService):
         self.services = [self]
         self.queue = queue
         self.loop = asyncio.get_event_loop()
-
+        urllib3.disable_warnings()
+        
         super(Orchestrator, self).__init__(id, queue)
 
     async def Start(self):
@@ -21,20 +22,21 @@ class Orchestrator(BaseService):
                 self.loop.add_signal_handler(
                     s, lambda s=s: asyncio.create_task(self.shutdown(s, self.loop)))
 
-        #region    
+        logger = Logger("logger", self.queue)
+        await self.StartService(logger)
+        msbHandler = microServiceBusHandler("msb", self.queue)
+        await self.StartService(msbHandler)
+        
+         #region    
         text = """
            _               ____                  _          ____             
  _ __ ___ (_) ___ _ __ ___/ ___|  ___ _ ____   _(_) ___ ___| __ ) _   _ ___  
 | '_ ` _ \\| |/ __| '__/ _ \\___ \\ / _ \\ '__\\ \\ / / |/ __/ _ \\  _ \\| | | / __| 
 | | | | | | | (__| | | (_) |__) |  __/ |   \\ V /| | (_|  __/ |_) | |_| \\__ \\ 
 |_| |_| |_|_|\\___|_|  \\___/____/ \\___|_|    \\_/ |_|\\___\\___|____/ \\__,_|___/ \n\n"""
-        #endregion
         await self.Debug(text)
-        logger = Logger("logger", self.queue)
-        await self.StartService(logger)
-        msbHandler = microServiceBusHandler("msb", self.queue)
-        await self.StartService(msbHandler)
-        
+        #endregion
+
         await self.Debug("Started")
 
         while self.run:
