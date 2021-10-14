@@ -8,6 +8,7 @@ import sys
 import socket
 import os
 import json
+import logging,threading
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
 from base_service import BaseService
@@ -69,6 +70,8 @@ class microServiceBusHandler(BaseService):
     #endregion
     #region SignalR event listeners
     async def set_up_signalr(self):
+        self.handler = logging.StreamHandler()
+        self.handler.setLevel(logging.DEBUG)
         # Settings
         self.connection = HubConnectionBuilder()\
             .with_url(self.base_uri, options={"verify_ssl": False}) \
@@ -84,6 +87,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
         self.connection.on_close(lambda: print("connection closed"))
         self.connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
+        
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
@@ -92,7 +96,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on('errorMessage', print)
         self.connection.on('restart', lambda args: os.execv(sys.executable, ['python'] + sys.argv))
         self.connection.on('reboot', lambda args: os.system("sudo reboot"))
-
+        self.connection.on("heartBeat", lambda messageList: print("Heartbeat received: " + " ".join(messageList)))
         self.connection.start()
         time.sleep(1)
     #endregion
@@ -126,10 +130,22 @@ class microServiceBusHandler(BaseService):
     def successful_sign_in(self, sign_in_response):
         print('Node ' + sign_in_response["nodeName"] + ' signed in successfully')
         self.save_settings(sign_in_response)
+        self.sendHeartbeat()
 
     def ping_response(self, conn_id):
+        print("Ping response")
         settings = self.get_settings()
         self.connection.send("pingResponse", [settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
-    
+    def sendHeartbeat(self):
+        while True:
+            print("Sending heartbeat")
+            # pprint(dir(self.connection))
+            send_callback_received = threading.Lock()
+            send_callback_received.acquire()
+            self.connection.send("heartBeat", ["hej"], lambda m:send_callback_received.release())
+            if not send_callback_received.acquire(timeout=3):
+                print ("callback not received")
+            
+            time.sleep(5)
     #endregion
 
