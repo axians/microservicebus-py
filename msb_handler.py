@@ -8,6 +8,8 @@ import sys
 import socket
 import os
 import json
+import schedule
+import time
 import logging,threading
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
@@ -99,6 +101,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("heartBeat", lambda messageList: print("Heartbeat received: " + " ".join(messageList)))
         self.connection.start()
         time.sleep(1)
+        self.set_interval(self.sendHeartbeat, 60 * 3)
     #endregion
     #region SignalR callback functions
     async def create_node(self):
@@ -136,16 +139,18 @@ class microServiceBusHandler(BaseService):
         print("Ping response")
         settings = self.get_settings()
         self.connection.send("pingResponse", [settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
+
     def sendHeartbeat(self):
-        while True:
-            print("Sending heartbeat")
-            # pprint(dir(self.connection))
-            send_callback_received = threading.Lock()
-            send_callback_received.acquire()
-            self.connection.send("heartBeat", ["hej"], lambda m:send_callback_received.release())
-            if not send_callback_received.acquire(timeout=3):
-                print ("callback not received")
-            
-            time.sleep(5)
+        print("Sending heartbeat")
+        self.connection.send("heartBeat", ["hej"])
+
+    def set_interval(self,func, sec):
+        def func_wrapper():
+            self.set_interval(func, sec)
+            func()
+        t = threading.Timer(sec, func_wrapper)
+        t.start()
+        return t
+
     #endregion
 
