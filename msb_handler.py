@@ -27,9 +27,9 @@ class microServiceBusHandler(BaseService):
         self.ready = False
         self.base_uri = "https://microservicebus.com/nodeHub"
         home = str(Path.home())
-        self.msb_dir = "/data/home/msb-py"
+        self.msb_dir = "/Users/patrik/msb-py"
         self.service_path = f"{self.msb_dir}/services"
-        self.msb_settings_path = "/data/home/msb-py/settings.json"
+        self.msb_settings_path = "/Users/patrik/msb-py/settings.json"
         self.rauc_handler = RaucHandler()
         super(microServiceBusHandler, self).__init__(id, queue)
     # endregion
