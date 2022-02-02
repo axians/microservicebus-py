@@ -10,15 +10,16 @@ With the microservicebus-py Node, everything is about services communicating ove
 ```
 sudo apt-get install python3-pip
 ```
-### asyncio
+### Install required packages
 ```
-pip install asyncio
-```
-### aiohttp
-```
-pip install aiohttp
+pip install -r requirements.txt
 ```
 
+## Run using Docker
+```
+docker build -t microservicebus-py .;
+docker run -it --rm microservicebus-py
+```
 
 ## BaseService (base_service)
 All services inherit from *BaseService* either directly or through *CustomService*. Inheriting from *BaseService* provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also call `self.SubmitAction(destination, action, message)` to more flexibility is needed.
@@ -53,16 +54,12 @@ await self.Debug("Hello from Python")
 The *Orchestrator* is responsible for starting up services and correlate messages between then. All messages on the queue are of type QueueMessage (base_service) and contains information such as the `destination` and `action`. When the Orchestrator receives a message on the queue, it will resolve the destination and call the function (*action*).
 
 ### microServiceBusHandler (msb_handler)
-As the name implies the *microServiceBusHandler* is responsible for all communication with microServiceBus.com. When staring up the service will sign in to msb.com and receive a list of services and the iot hub provider service. After successful sign-in, the service will call the Orchestrator to start up the these services.
-
-The *microServiceBusHandler* also has two other functions
-* **_debug** - *used by the logger to forward console information to msb.com*
-* **_start_custom_services** - *(accessable through self.StartCustomServices) Downloads and starts up all CustomServices (not Com)*
+As the name implies the *microServiceBusHandler* is responsible for all communication with microServiceBus.com. When staring up the service will sign in to msb.com and set up channels for different commands in msb. After successful sign-in, the service will call the Orchestrator to start up the these services.
 
 ### Logger (logger_service)
 The Logger service outputs data to the terminal and forward debugging info to *microServiceBusHandler* if enabled
 
-### Com (downloaded at startup)
+### Com (downloaded at startup) (Currently not used)
 The *Com* service is responsible for all communication with the IoT Hub provider. The only implementation as for now is the *AzureIoT* service.
 
 The *Com* service is also responsible to handle state changes. These is expected to be a `msb-state` in the desired state:
