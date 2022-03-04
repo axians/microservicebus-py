@@ -19,7 +19,8 @@ from packaging import version
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
 from base_service import BaseService
-from rauc_handler import RaucHandler
+#from rauc_handler import RaucHandler
+
 
 class microServiceBusHandler(BaseService):
     # region Constructor
@@ -30,7 +31,7 @@ class microServiceBusHandler(BaseService):
         self.msb_dir = f"{os.environ['HOME']}/msb-py"
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
-        self.rauc_handler = RaucHandler()
+        #self.rauc_handler = RaucHandler()
         super(microServiceBusHandler, self).__init__(id, queue)
     # endregion
     # region Base functions
@@ -57,6 +58,19 @@ class microServiceBusHandler(BaseService):
     async def _debug(self, message):
         # print(message)
         pass
+
+    async def refresh_vpn_settings(self, args):
+        self.connection.send("refreshVpnSettings", None)
+
+    async def update_vpn_endpoint(self, args):
+        self.connection.send("updateVpnEndpoint", args.ip)
+
+    async def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
+        message = {'vpnConfig': vpnConfig,
+                   'interfaceName': interfaceName,
+                   'endpoint': endpoint,
+                   'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
+        await self.SubmitAction("vpnhelper", "get_vpn_settings_response", message)
     # endregion
     # region Helpers
 
@@ -116,8 +130,14 @@ class microServiceBusHandler(BaseService):
         self.connection.on("heartBeat", lambda messageList: print(
             "Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
-        self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(firmware_response[0], firmware_response[1]))
-        self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(boot_info[0], boot_info[1]))
+        self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
+            firmware_response[0], firmware_response[1]))
+        self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(
+            boot_info[0], boot_info[1]))
+        self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
+            vpn_response[0], vpn_response[1], vpn_response[2]))
+        self.connection.on("refreshVpnSettings",
+                           lambda args: self.refresh_vpn_settings())
         self.connection.start()
         time.sleep(1)
         self.set_interval(self.sendHeartbeat, 60 * 3)
@@ -157,6 +177,8 @@ class microServiceBusHandler(BaseService):
         print(
             'Node ' + sign_in_response["nodeName"] + ' signed in successfully')
         self.save_settings(sign_in_response)
+        asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
+
         self.sendHeartbeat()
 
     def ping_response(self, conn_id):
@@ -225,9 +247,10 @@ class microServiceBusHandler(BaseService):
         boot_status = current_platform["boot-status"]
         installed = current_platform["installed.timestamp"]
 
-        uri = "https://microservicebus.com/api/nodeimages/" + self.get_settings()["organizationId"] + "/" + platform
-        print("Notified on new firmware");
-        print("Current firmware platform: "+ platform)
+        uri = "https://microservicebus.com/api/nodeimages/" + \
+            self.get_settings()["organizationId"] + "/" + platform
+        print("Notified on new firmware")
+        print("Current firmware platform: " + platform)
         print("Current firmware version: " + current_version)
         print("Current boot status: " + boot_status)
         print("Current firmware installed: " + installed)
@@ -262,9 +285,11 @@ class microServiceBusHandler(BaseService):
         print(f"Marking partition {partition}")
         self.rauc_handler.mark_partition("active", partition)
         print("Successfully marked partition")
-        self.connection.send("notify", [connid, f"Successfully marked partition.", "INFO"])
+        self.connection.send(
+            "notify", [connid, f"Successfully marked partition.", "INFO"])
         time.sleep(10)
         os.system("sudo /sbin/reboot")
+
     def set_interval(self, func, sec):
         def func_wrapper():
             self.set_interval(func, sec)
