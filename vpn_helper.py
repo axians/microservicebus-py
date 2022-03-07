@@ -53,12 +53,14 @@ class VPNHelper(BaseService):
                 return
 
             # Use pip in utils.py
+            self.AddPipPackage("wireguard", "wireguard", "Server")
+            print("installed wireguard")
             # Downloads wireguard package
-            subprocess.check_call(
-                [sys.executable, '-m', 'pip', 'install', 'wireguard'])
+            # subprocess.check_call(
+            #     [sys.executable, '-m', 'pip', 'install', 'wireguard'])
             # server = Server(vpnConfigPath)
-
-            await self.SubmitAction("msb", "refresh_vpn_settings", {})
+            message = [1, 2, 3]
+            await self.SubmitAction("msb", "refresh_vpn_settings", message[0])
 
         except subprocess.CalledProcessError as e:
             print(e.output)
@@ -83,7 +85,7 @@ class VPNHelper(BaseService):
                         # server.config().post_up
 
                 else:
-                    message = {'ip': local_ip}
+                    message = [{'ip': local_ip}]
                     await self.SubmitAction("msb", "update_vpn_endpoint", message)
 
             else:

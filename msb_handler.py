@@ -60,7 +60,9 @@ class microServiceBusHandler(BaseService):
         pass
 
     async def refresh_vpn_settings(self, args):
-        self.connection.send("refreshVpnSettings", None)
+        print("refreshing vpn settings function")
+        self.connection.send("refreshVpnSettings", ["refresh vpn"])
+        print("refreshing vpn settings DONE")
 
     async def update_vpn_endpoint(self, args):
         self.connection.send("updateVpnEndpoint", args.ip)
@@ -136,8 +138,11 @@ class microServiceBusHandler(BaseService):
             boot_info[0], boot_info[1]))
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
             vpn_response[0], vpn_response[1], vpn_response[2]))
-        self.connection.on("refreshVpnSettings",
-                           lambda args: self.refresh_vpn_settings())
+        self.connection.on(
+            "refreshVpnSettings", lambda messageList: print(
+                "message: " + " ".join(messageList)))
+        # self.refresh_vpn_settings(messageList))
+
         self.connection.start()
         time.sleep(1)
         self.set_interval(self.sendHeartbeat, 60 * 3)
