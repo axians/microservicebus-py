@@ -1,99 +1,84 @@
 import sys
 import subprocess
 import asyncio
-import socket
+import netifaces
+import utils
 from xmlrpc.client import Server
 from base_service import BaseService
-# from wireguard import Server
-from signalrcore.hub_connection_builder import HubConnectionBuilder
-# from azure.iot.device.aio import IoTHubDeviceClient
-
 
 class VPNHelper(BaseService):
     def __init__(self, id, queue):
         print("start vpn helper")
         super(VPNHelper, self).__init__(id, queue)
 
-    # async def Up(vpnConfigPath):
-    #     try:
-    #         # Downloads wireguard package
-    #         subprocess.check_call(
-    #             [sys.executable, '-m', 'pip', 'install', 'wireguard'])
-    #         server = Server(vpnConfigPath)
-    #         #Server('myvpnserver.com', '192.168.24.0/24',address='192.168.24.1')
-
-    #         # Write out the server config to the default location: /etc/wireguard/wg0.conf
-    #         server.config().write()
-    #         server.config().post_up
-
-    #     except Exception as e:
-    #         print(f"Error in vpn_helper up: {e}")
-
-    # async def Down(vpnConfigPath):
-    #     try:
-    #         # Downloads wireguard package
-    #         subprocess.check_call(
-    #             [sys.executable, '-m', 'pip', 'install', 'wireguard'])
-    #         server = Server(vpnConfigPath)
-    #         #Server('myvpnserver.com', '192.168.24.0/24',address='192.168.24.1')
-
-    #         # Write out the server config to the default location: /etc/wireguard/wg0.conf
-    #         server.config().write()
-    #         server.config().post_down
-
-    #     except Exception as e:
-    #         print(f"Error in vpn_helper down: {e}")
+    async def Stop(self):
+        print("STOPPED")
 
     async def msb_signed_in(self, args):
         try:
             # Check if wireguard is installed
             response = subprocess.run(
-                "wg", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+                "wg --help", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
             if(response.returncode != 0):
                 return
 
             # Use pip in utils.py
             self.AddPipPackage("wireguard", "wireguard", "Server")
-            print("installed wireguard")
-            # Downloads wireguard package
-            # subprocess.check_call(
-            #     [sys.executable, '-m', 'pip', 'install', 'wireguard'])
-            # server = Server(vpnConfigPath)
+            await self.Debug("WireGuard is installed")
+
             message = [1, 2, 3]
             await self.SubmitAction("msb", "refresh_vpn_settings", message[0])
 
         except subprocess.CalledProcessError as e:
             print(e.output)
 
-#vpnConfigPath, server, vpnConfig, interfaceName, endpoint
     async def get_vpn_settings_response(self, args):
         try:
-            print("get vpn inside vpn helper")
-            print(args["vpnConfigPath"])
-            if args.vpnConfig:
-                print("vpnConfigPath, vpn helper")
-                hostname = socket.gethostname()
-                local_ip = socket.gethostbyname(hostname)
-                print(local_ip)
+            await self.Debug("Received VPN settings from cloud")
+            message = args.message[0]
+            if message["vpnConfigPath"]:
+                self.vpnConfigPath = message["vpnConfigPath"];           
+                ip = utils.get_public_ip()
+                
+                if ip != message["endpoint"]:
+                    await self.Debug(f"IP has changed ({ip}). Calling cloud to update")
+                    req = {'ip': ip}
+                    await self.SubmitAction("msb", "update_vpn_endpoint", req)
 
-                # No change, continue setup interface
-                if local_ip == args.endpoint:
-                    with open(args.vpnConfigPath, 'r') as vpnConfig:
-                        data = vpnConfig.read()
-                    with open(args.vpnConfigPath, 'w') as interface:
-                        interface.write(data)
-                        # wg = self.AddPipPackage(
-                        #     "wireguard", "Server", "Server")
-                        # server.config().post_down
-                        # server.config().post_up
-
-                else:
-                    message = [{'ip': local_ip}]
-                    await self.SubmitAction("msb", "update_vpn_endpoint", message)
-
+                wg_config_file = open(message["vpnConfigPath"], "w")
+                wg_config_file.write(message["vpnConfig"])
+                wg_config_file.close()
+                
+                await self.Debug("wireguard config has been updated")
+                await self.wg_down()
+                await self.wg_up()
             else:
                 # server.config().post_down
-                print("down")
+                await self.Debug("down")
 
         except Exception as e:
-            print(f"Error in vpn_helper down: {e}")
+            await self.Debug(f"Error in vpn_helper down: {e}")
+    
+    async def wg_up(self):
+        try:
+            wg_command =  f"wg-quick up {self.vpnConfigPath}"
+            response = subprocess.run( wg_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+            if(response.returncode != 0):
+                await self.Debug("Failed to bring up VPN connection")
+            else:
+                await self.Debug("VPN connection established")
+        except Exception as e:
+            await self.Debug(f"Error trying to connect VPN: {e}")
+            
+    async def wg_down(self):
+        try:
+            wg_command =  f"wg-quick down {self.vpnConfigPath}"
+            response = subprocess.run( wg_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+            if(response.returncode != 0):
+                await self.Debug(f"Failed to bring down VPN connection. This is probobly ok")
+            else:
+                await self.Debug("VPN connection disconnected")
+        except Exception as e:
+            await self.Debug(f"Error trying to disconnect VPN: {e}")
+
+

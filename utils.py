@@ -1,4 +1,4 @@
-import subprocess, sys, importlib
+import subprocess, sys, importlib, socket
 import pip._internal as pip
 
 def install(package):
@@ -24,3 +24,10 @@ def install_module(module):
                 print(f'{package["package"]} has been installed..')
             except TypeError as err:
                 print('Handling run-time error:', err)
+
+def get_public_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    return ip

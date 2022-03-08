@@ -53,26 +53,23 @@ class microServiceBusHandler(BaseService):
             while True:
                 await asyncio.sleep(0.1)
         except Exception as e:
-            print(f"Error in msb.start: {e}")
+            self.Debug(f"Error in msb.start: {e}")
 
     async def _debug(self, message):
-        # print(message)
         pass
 
     async def refresh_vpn_settings(self, args):
-        print("refreshing vpn settings function")
         self.connection.send("getVpnSettings", [""])
-        print("refreshing vpn settings DONE")
 
     async def update_vpn_endpoint(self, args):
-        self.connection.send("updateVpnEndpoint", args.ip)
+        self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
 
     def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
-        print("Get vpn settings response")
         message = {'vpnConfig': vpnConfig,
                    'interfaceName': interfaceName,
                    'endpoint': endpoint,
                    'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
+
         asyncio.run(self.SubmitAction(
             "vpnhelper", "get_vpn_settings_response", message))
     # endregion
@@ -175,7 +172,6 @@ class microServiceBusHandler(BaseService):
             "ipAddresses": "",
             "macAddresses": ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         }
-        print(hostData)
         self.connection.send("signIn", [hostData])
 
     def successful_sign_in(self, sign_in_response):
@@ -193,8 +189,7 @@ class microServiceBusHandler(BaseService):
                              settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
 
     def sendHeartbeat(self):
-        print("Sending heartbeat")
-        self.connection.send("heartBeat", ["hej"])
+        self.connection.send("heartBeat", ["echo"])
 
     def report_state(self, id):
         self.connection.send('notify', [

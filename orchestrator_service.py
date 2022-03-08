@@ -97,9 +97,9 @@ class Orchestrator(BaseService):
     async def shutdown(self, signal, loop, *args):
         print()
         print(f"Shutting down ...")
+        print(f"Running {len(self.services)} services")
         self.run = False
-        # Shut down signalr connection
-        # self.connection.stop()
+
         # Calling all services to shutdown
         [await service.Stop() for service in self.services]
 
