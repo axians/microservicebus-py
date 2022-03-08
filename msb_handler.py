@@ -61,18 +61,20 @@ class microServiceBusHandler(BaseService):
 
     async def refresh_vpn_settings(self, args):
         print("refreshing vpn settings function")
-        self.connection.send("refreshVpnSettings", ["refresh vpn"])
+        self.connection.send("getVpnSettings", [""])
         print("refreshing vpn settings DONE")
 
     async def update_vpn_endpoint(self, args):
         self.connection.send("updateVpnEndpoint", args.ip)
 
-    async def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
+    def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
+        print("Get vpn settings response")
         message = {'vpnConfig': vpnConfig,
                    'interfaceName': interfaceName,
                    'endpoint': endpoint,
                    'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
-        await self.SubmitAction("vpnhelper", "get_vpn_settings_response", message)
+        asyncio.run(self.SubmitAction(
+            "vpnhelper", "get_vpn_settings_response", message))
     # endregion
     # region Helpers
 
@@ -139,9 +141,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
             vpn_response[0], vpn_response[1], vpn_response[2]))
         self.connection.on(
-            "refreshVpnSettings", lambda messageList: print(
-                "message: " + " ".join(messageList)))
-        # self.refresh_vpn_settings(messageList))
+            "refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
 
         self.connection.start()
         time.sleep(1)

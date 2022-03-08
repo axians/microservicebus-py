@@ -68,7 +68,10 @@ class VPNHelper(BaseService):
 #vpnConfigPath, server, vpnConfig, interfaceName, endpoint
     async def get_vpn_settings_response(self, args):
         try:
+            print("get vpn inside vpn helper")
+            print(args["vpnConfigPath"])
             if args.vpnConfig:
+                print("vpnConfigPath, vpn helper")
                 hostname = socket.gethostname()
                 local_ip = socket.gethostbyname(hostname)
                 print(local_ip)
