@@ -82,7 +82,7 @@ class Orchestrator(BaseService):
 
         for srv in customServices:
             srv.task.cancel()
-
+            
         [await service.Stop() for service in customServices]
         [self.services.remove(service) for service in customServices]
         customServices = [
@@ -99,7 +99,7 @@ class Orchestrator(BaseService):
         print(f"Shutting down ...")
         print(f"Running {len(self.services)} services")
         self.run = False
-
+        
         # Calling all services to shutdown
         [await service.Stop() for service in self.services]
 

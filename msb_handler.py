@@ -58,20 +58,6 @@ class microServiceBusHandler(BaseService):
     async def _debug(self, message):
         pass
 
-    async def refresh_vpn_settings(self, args):
-        self.connection.send("getVpnSettings", [""])
-
-    async def update_vpn_endpoint(self, args):
-        self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
-
-    def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
-        message = {'vpnConfig': vpnConfig,
-                   'interfaceName': interfaceName,
-                   'endpoint': endpoint,
-                   'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
-
-        asyncio.run(self.SubmitAction(
-            "vpnhelper", "get_vpn_settings_response", message))
     # endregion
     # region Helpers
 
@@ -137,8 +123,7 @@ class microServiceBusHandler(BaseService):
             boot_info[0], boot_info[1]))
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
             vpn_response[0], vpn_response[1], vpn_response[2]))
-        self.connection.on(
-            "refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
+        self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
 
         self.connection.start()
         time.sleep(1)
@@ -155,7 +140,7 @@ class microServiceBusHandler(BaseService):
         if(first_sign_in == True):
             print("Node created successfully")
             self.save_settings(settings)
-
+        
         print("Signing in")
         print(settings["nodeName"])
         print(settings["organizationId"])
@@ -298,4 +283,17 @@ class microServiceBusHandler(BaseService):
         t.start()
         return t
 
+    async def refresh_vpn_settings(self, args):
+        self.connection.send("getVpnSettings", [""])
+
+    async def update_vpn_endpoint(self, args):
+        self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
+
+    def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
+        message = {'vpnConfig': vpnConfig,
+                   'interfaceName': interfaceName,
+                   'endpoint': endpoint,
+                   'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
+
+        asyncio.run(self.SubmitAction( "vpnhelper", "get_vpn_settings_response", message))
     # endregion

@@ -11,8 +11,10 @@ class VPNHelper(BaseService):
         print("start vpn helper")
         super(VPNHelper, self).__init__(id, queue)
 
-    async def Stop(self):
-        print("STOPPED")
+    async def Start(self):
+        await self.Debug("Started")
+        while True:
+            await asyncio.sleep(0.1)
 
     async def msb_signed_in(self, args):
         try:
