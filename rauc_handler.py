@@ -9,7 +9,7 @@ class RaucHandler():
 
 
         self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        self.dbus_proxy = Gio.DBusProxy.new_sync(bus,
+        self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus,
                                             Gio.DBusProxyFlags.NONE,
                                             None,
                                             'de.pengutronix.rauc',
