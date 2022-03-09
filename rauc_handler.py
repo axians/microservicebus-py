@@ -26,14 +26,14 @@ class RaucHandler():
 
     def mark_partition(self, state, partition):
         mark_result = self.dbus_proxy.call_sync('Mark',
-                                                GLib.Variant('(s)', (state,partition)),
+                                                GLib.Variant('(ss)', (state,partition)),
                                         Gio.DBusCallFlags.NO_AUTO_START, 500, None)
         return mark_result
 
     def install(self, path):
         try:
             self.dbus_proxy.call_sync('Install',
-                                        GLib.Variant('(s)', (path,)),
+                                        GLib.Variant('(s)', (path)),
                                         Gio.DBusCallFlags.NO_AUTO_START, 500, None)
             self.reboot_after_install()
         except Exception as e:
