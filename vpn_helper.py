@@ -24,10 +24,6 @@ class VPNHelper(BaseService):
             if(response.returncode != 0):
                 return
 
-            # Use pip in utils.py
-            self.AddPipPackage("wireguard", "wireguard", "Server")
-            await self.Debug("WireGuard is installed")
-
             message = [1, 2, 3]
             await self.SubmitAction("msb", "refresh_vpn_settings", message[0])
 

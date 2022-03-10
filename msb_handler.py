@@ -121,8 +121,7 @@ class microServiceBusHandler(BaseService):
             firmware_response[0], firmware_response[1]))
         self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(
             boot_info[0], boot_info[1]))
-        self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
-            vpn_response[0], vpn_response[1], vpn_response[2]))
+        self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(vpn_response[0], vpn_response[1], vpn_response[2]))
         self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
 
         self.connection.start()

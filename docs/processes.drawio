@@ -1,0 +1,146 @@
+<mxfile host="65bd71144e">
+    <diagram id="NwyFhuL-EIjybWBtbaD6" name="Page-1">
+        <mxGraphModel dx="1374" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-1" value="vpnHelper" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;strokeColor=#FFFFFF;fillColor=#60a917;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="210" width="100" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-14" value="update_vpn_endpoint" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="FWIX3E3DMyYJrpk60eax-1" target="FWIX3E3DMyYJrpk60eax-2" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="50" y="270" as="sourcePoint"/>
+                        <mxPoint x="130" y="270" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-2" value="msbHandler" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;strokeColor=#FFFFFF;fillColor=#60a917;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="850" y="210" width="100" height="400" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-11" value="SignalR:getVpnSettings" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="FWIX3E3DMyYJrpk60eax-2" target="FWIX3E3DMyYJrpk60eax-3" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="50" y="190" as="sourcePoint"/>
+                        <mxPoint x="130" y="190" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-15" value="updateVpnEndpoint" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="FWIX3E3DMyYJrpk60eax-2" target="FWIX3E3DMyYJrpk60eax-3" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="50" y="299" as="sourcePoint"/>
+                        <mxPoint x="130" y="299" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-3" value="msb.com" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d80073;fontColor=#ffffff;strokeColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="1030" y="210" width="100" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-6" value="SignalR:Event:signInMessage" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="FWIX3E3DMyYJrpk60eax-3" target="FWIX3E3DMyYJrpk60eax-2" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="50" y="110" as="sourcePoint"/>
+                        <mxPoint x="229.5" y="110" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-5" value="SignalR:SignIn" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" target="FWIX3E3DMyYJrpk60eax-3" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="900" y="290" as="sourcePoint"/>
+                        <mxPoint x="980" y="290" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-8" value="Orchestrator" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;strokeColor=#FFFFFF;fillColor=#37610D;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="210" width="100" height="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-9" value="msb_signed_in" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="FWIX3E3DMyYJrpk60eax-8" target="FWIX3E3DMyYJrpk60eax-1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="210.5" y="140" as="sourcePoint"/>
+                        <mxPoint x="30" y="140" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-10" value="refresh_vpn_settings" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" source="FWIX3E3DMyYJrpk60eax-1" target="FWIX3E3DMyYJrpk60eax-2" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="580" y="380" as="sourcePoint"/>
+                        <mxPoint x="660" y="380" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="610" y="380"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-12" value="getVpnSettingsResponse" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" source="FWIX3E3DMyYJrpk60eax-3" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1060" y="450" as="sourcePoint"/>
+                        <mxPoint x="900" y="430" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-13" value="get_vpn_settings_response" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" target="FWIX3E3DMyYJrpk60eax-1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="900" y="450" as="sourcePoint"/>
+                        <mxPoint x="810" y="450" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="830" y="450"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-16" value="Piigab Agent" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d80073;fontColor=#ffffff;strokeColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="210" width="100" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-17" value="IoTHub" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d80073;fontColor=#ffffff;strokeColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="1210" y="210" width="100" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-18" value="SendEvent" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" source="FWIX3E3DMyYJrpk60eax-16" target="FWIX3E3DMyYJrpk60eax-21" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="530" as="sourcePoint"/>
+                        <mxPoint x="1260" y="520" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="180" y="530"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-19" value="MqttService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;strokeColor=#FFFFFF;fillColor=#60a917;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="325" y="210" width="100" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-20" value="SendEvent" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" target="FWIX3E3DMyYJrpk60eax-17" edge="1" source="2">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="425" y="560" as="sourcePoint"/>
+                        <mxPoint x="699.5" y="560" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="570" y="660"/>
+                            <mxPoint x="640" y="660"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-21" value="Mosquitto" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d80073;fontColor=#ffffff;strokeColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="210" width="100" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="FWIX3E3DMyYJrpk60eax-23" value="subscribe" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" parent="1" target="FWIX3E3DMyYJrpk60eax-19" edge="1" source="FWIX3E3DMyYJrpk60eax-21">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="290" y="510" as="sourcePoint"/>
+                        <mxPoint x="370" y="550" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="330" y="560"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="2" value="IoTHubService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;strokeColor=#FFFFFF;fillColor=#60a917;fontColor=#ffffff;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="210" width="100" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="send_event" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="2" source="FWIX3E3DMyYJrpk60eax-8">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="220" y="400" as="sourcePoint"/>
+                        <mxPoint x="50" y="400" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="3" value="send_event" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1" source="FWIX3E3DMyYJrpk60eax-19" target="FWIX3E3DMyYJrpk60eax-8">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="380.00034482758616" y="580" as="sourcePoint"/>
+                        <mxPoint x="574.6900000000003" y="580" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="530.19" y="580"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="6" value="msb_signed_in" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1" target="FWIX3E3DMyYJrpk60eax-19">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="901.18" y="540" as="sourcePoint"/>
+                        <mxPoint x="610.0035294117646" y="540" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

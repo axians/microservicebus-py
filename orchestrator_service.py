@@ -6,6 +6,7 @@ from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
 from vpn_helper import VPNHelper
+from mqtt_service import MqttService
 
 
 class Orchestrator(BaseService):
@@ -33,6 +34,9 @@ class Orchestrator(BaseService):
         await self.StartService(msbHandler)
         vpnHelper = VPNHelper("vpnhelper", self.queue)
         await self.StartService(vpnHelper)
+        mqttService = MqttService("mqttService", self.queue)
+        await self.StartService(mqttService)
+
         # region
         text = """
            _               ____                  _          ____             
