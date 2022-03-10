@@ -1,7 +1,7 @@
 import asyncio
 import pip
 import importlib
-from model import QueueMessage
+from queue_message import QueueMessage
 
 
 class BaseService:
@@ -66,14 +66,21 @@ class BaseService:
     # region Private functions
     # package = pip package E.g "azure-iot-device"
     # module = module name E.g "azure.iot.device.aio"
-    # name = name of object E.g "IoTHubDeviceClient"
+    # name = name of object E.g "IoTHubDeviceClient". If you don't know the name, try dir(importlib.import_module("module name")
+
+    # SAMPLES:
+    # IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
+    # MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client")
+
     def AddPipPackage(self, package, module, name):
         try:
             try:
                 importlib.import_module(module)
-            except:
+            except Exception as e1:
+                print (e1)
                 pip.main(['install', package])
-        except:
+        except Exception as e2:
+            print(e2)
             importlib.import_module(module)
 
         Package = getattr(importlib.import_module(module), name)
