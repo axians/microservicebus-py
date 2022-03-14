@@ -18,8 +18,7 @@ class VPNHelper(BaseService):
     async def msb_signed_in(self, args):
         try:
             # Check if wireguard is installed
-            response = subprocess.run(
-                "wg --help", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+            response = subprocess.run("wg --help", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
             if(response.returncode != 0):
                 return
 
