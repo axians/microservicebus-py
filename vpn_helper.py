@@ -8,7 +8,6 @@ from base_service import BaseService
 
 class VPNHelper(BaseService):
     def __init__(self, id, queue):
-        print("start vpn helper")
         super(VPNHelper, self).__init__(id, queue)
 
     async def Start(self):
