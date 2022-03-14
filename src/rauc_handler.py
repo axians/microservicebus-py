@@ -9,15 +9,17 @@ from gi.repository import Gio
 
 class RaucHandler():
     def __init__(self):
-
-        self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus,
-                                                 Gio.DBusProxyFlags.NONE,
-                                                 None,
-                                                 'de.pengutronix.rauc',
-                                                 '/',
-                                                 'de.pengutronix.rauc.Installer',
-                                                 None)
+        try:
+            self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus,
+                                                    Gio.DBusProxyFlags.NONE,
+                                                    None,
+                                                    'de.pengutronix.rauc',
+                                                    '/',
+                                                    'de.pengutronix.rauc.Installer',
+                                                    None)
+        except Exception as ex:
+            print("ups")
 
     def get_slot_status(self):
         response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE,

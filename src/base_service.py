@@ -72,16 +72,20 @@ class BaseService:
     # IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
     # MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client")
 
+    # Think of it this way.... MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client") ...is equivalent to:
+    # pip install paho-mqtt
+    # from paho.mqtt.client import Client
     def AddPipPackage(self, package, module, name):
         try:
             try:
+                print(f"Importing {module}")
                 importlib.import_module(module)
             except Exception as e1:
-                print (e1)
+                print (f"Unable to import module:. \nTrying to install package {package}")
                 pip.main(['install', package])
         except Exception as e2:
-            print(e2)
-            importlib.import_module(module)
+            print (f"Failed to install {package}")
+            raise Exception('InstallPackage', f"Failed to install {package}")
 
         Package = getattr(importlib.import_module(module), name)
         return Package

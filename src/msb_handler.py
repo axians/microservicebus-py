@@ -20,7 +20,7 @@ from packaging import version
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
 from base_service import BaseService
-#from rauc_handler import RaucHandler
+from rauc_handler import RaucHandler
 
 
 class microServiceBusHandler(BaseService):
@@ -32,7 +32,7 @@ class microServiceBusHandler(BaseService):
         self.msb_dir = f"{os.environ['HOME']}/msb-py"
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
-        #self.rauc_handler = RaucHandler()
+        self.rauc_handler = RaucHandler()
         super(microServiceBusHandler, self).__init__(id, queue)
     # endregion
     # region Base functions
@@ -54,7 +54,7 @@ class microServiceBusHandler(BaseService):
             while True:
                 await asyncio.sleep(0.1)
         except Exception as e:
-            self.Debug(f"Error in msb.start: {e}")
+            self.ThrowError(f"Error in msb.start: {e}")
 
     async def _debug(self, message):
         pass
@@ -111,6 +111,31 @@ class microServiceBusHandler(BaseService):
         await self.Debug(mac)
         self.connection.send("createNodeFromMacAddress", [mac])
 
+    def start_azure_iot_service(self, sign_in_response):
+        try:
+            file_name = "pythonAzureIoTProvider.py"
+            uri = f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
+            service_file = requests.get(uri, allow_redirects=True)
+            service_file_name = os.path.join(self.service_path, file_name)
+
+            file = open(service_file_name, 'wb+')
+            file.write(service_file.content)
+            file.close()
+
+            module_name = "AzureIoTService" #pythonActivity["userData"]["type"].replace("_py", "")
+            service_name = "AzureIoTService" #pythonActivity["userData"]["type"]
+            
+            spec = importlib.util.spec_from_file_location(module_name, service_file_name)
+            module = importlib.util.module_from_spec(spec) 
+            spec.loader.exec_module(module)
+            MicroService = getattr(module, module_name)
+            microService = MicroService(service_name.lower(), self.queue, sign_in_response) #(id, queue, config)
+            asyncio.run(self.StartService(microService))
+            asyncio.run(self.Debug(f"Loading module {module_name}"))
+
+
+        except Exception as e:
+            asyncio.run(self.ThrowError(f"Error in msb.start_azure_iot_service: {e}"))
     # endregion
     # region SignalR event listeners
 
@@ -159,9 +184,15 @@ class microServiceBusHandler(BaseService):
 
     def successful_sign_in(self, sign_in_response):
         node_name = sign_in_response["nodeName"]
+        tag_list = sign_in_response["tags"]
+
         asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
         self.save_settings(sign_in_response)
+        
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
+
+        if sign_in_response['protocol'] == "AZUREIOT":
+            self.start_azure_iot_service(sign_in_response)
 
         if os.path.isdir(self.service_path) == False:
             os.mkdir(self.service_path)
@@ -169,6 +200,13 @@ class microServiceBusHandler(BaseService):
         for itinerary in sign_in_response['itineraries']:
             pythonActivities = [srv for srv in itinerary["activities"] if srv["userData"]["baseType"] == 'pythonfile']
             for pythonActivity in pythonActivities:
+
+                host_config = [srv for srv in pythonActivity["userData"]["config"]["generalConfig"] if srv["id"] == 'host']
+
+                # Check if activity is set to run on node 
+                if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
+                    continue
+
                 organization_id = sign_in_response["organizationId"]
                 file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
 
@@ -244,6 +282,7 @@ class microServiceBusHandler(BaseService):
             #             print(interface_name)
             # gateway_ip, ip_address, mac_address, name, netmask, type
             self.connection.send('reportStateResponse', [state, id])
+    
     def update_firmware(self, force, connid):
         print(force)
         print(connid)

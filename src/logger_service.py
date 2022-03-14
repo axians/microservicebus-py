@@ -13,11 +13,7 @@ class Logger(BaseService):
     
     async def StateUpdate(self, message):
         state = message.message[0]
-        state_exists = "msb-state" in state["desired"]
-        if state_exists:
-            if self.debug != state["desired"]["msb-state"]["debug"]:
-                self.debug = state["desired"]["msb-state"]["debug"]
-                await self.Debug(f"Console debugging is set to {self.debug}")
+        await self.Debug(f"Received: {message}")
 
     async def _debug(self, message):
        print(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
