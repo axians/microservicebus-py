@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.7
 import asyncio, logging, os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(1, './lib')
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(
