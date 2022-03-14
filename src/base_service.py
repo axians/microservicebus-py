@@ -1,0 +1,110 @@
+import asyncio
+import pip
+import importlib
+from queue_message import QueueMessage
+
+
+class BaseService:
+    def __init__(self, id, queue):
+        self.id = id
+        self.queue = queue
+        self.task = None
+
+    # region Default functions
+    async def Start(self):
+        pass
+
+    async def Stop(self):
+        pass
+
+    async def Process(self, message):
+        pass
+
+    async def StateUpdate(self, state):
+        pass
+
+    # endregion
+
+    # region Communication functions
+    async def SubmitAction(self, destination, action, message):
+        msg = QueueMessage(self.id, destination, action, message)
+        asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def Debug(self, message):
+        msg = QueueMessage(self.id, "logger", "_debug", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def ThrowError(self, message):
+        msg = QueueMessage(self.id, "logger", "_error", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def SubmitMessage(self, message):
+        msg = QueueMessage(self.id, "com", "_sendEvent", message)
+        asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def StartService(self, service):
+        msg = QueueMessage(self.id, "orchestrator", "_start_service", service)
+        asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def StopCustomServices(self):
+        msg = QueueMessage(self.id, "orchestrator",
+                           "_stop_custom_services", "")
+        asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def StartCustomServices(self):
+        msg = QueueMessage(self.id, "msb", "_start_custom_services", "")
+        asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+    # endregion
+
+    # region Private functions
+    # package = pip package E.g "azure-iot-device"
+    # module = module name E.g "azure.iot.device.aio"
+    # name = name of object E.g "IoTHubDeviceClient". If you don't know the name, try dir(importlib.import_module("module name")
+
+    # SAMPLES:
+    # IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
+    # MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client")
+
+    def AddPipPackage(self, package, module, name):
+        try:
+            try:
+                importlib.import_module(module)
+            except Exception as e1:
+                print (e1)
+                pip.main(['install', package])
+        except Exception as e2:
+            print(e2)
+            importlib.import_module(module)
+
+        Package = getattr(importlib.import_module(module), name)
+        return Package
+
+    # endregion
+
+
+class CustomService(BaseService):
+     def __init__(self, id, queue, config):
+        self.id = id
+        self.queue = queue
+        self.config = config
+        super(CustomService, self).__init__(id, queue)
+       
+     def GetPropertyValue(self, category, prop):
+         ## newDict = dict(filter(lambda elem: elem[0] % 2 == 0, dictOfNames.items()))
+        try:
+            category = category + "Config"
+            values = [config for config in self.config[category] if config['id'] == prop]
+            if len(values) > 0:
+                return values[0]['value']
+            else:
+                return "undefined"
+        except Exception as e:
+                print(e)
+                return "undefined" 
