@@ -1,5 +1,4 @@
 asyncio
 signalrcore
 packaging
-pydbus
 psutil

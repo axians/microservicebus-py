@@ -1,35 +1,92 @@
 import signal
 import os
-from pydbus import SystemBus
+import subprocess
+import json
+from functools import reduce
+from gi.repository import GLib
+from gi.repository import Gio
 
 
 class RaucHandler():
     def __init__(self):
-        self.bus = SystemBus()
-        # the service we request
-        self.service_name = 'de.pengutronix.rauc'
-        # The interface we request of the service
-        self.interface_name = 'de.pengutronix.rauc.Installer'
-        # The object we request
-        self.object_path = '/'
-        remote_object = self.bus.get(self.service_name, '/')
 
-        # help(remote_object)
-        self.iface = remote_object['de.pengutronix.rauc.Installer']
-        #slot_status = iface.GetSlotStatus()
-        # print(slot_status)
+        self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus,
+                                                 Gio.DBusProxyFlags.NONE,
+                                                 None,
+                                                 'de.pengutronix.rauc',
+                                                 '/',
+                                                 'de.pengutronix.rauc.Installer',
+                                                 None)
 
     def get_slot_status(self):
-        slot_status = self.iface.GetSlotStatus()
+        response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE,
+                      stderr=subprocess.STDOUT, text=True, shell=True)
+        result = json.loads(response.stdout)
+        rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)["rootfs.0"]
+        print(rootfs0)
+        rootfs1 = next(item for item in result["slots"] if "rootfs.1" in item)["rootfs.1"]
+        slot_status = {
+            "rootfs0": {
+                "installed.count": self.deep_get(rootfs0, "slot_status.installed.count"),
+                "status": self.deep_get(rootfs0, "slot_status.status"),
+                "type": rootfs0["type"],
+                "sha256": self.deep_get(rootfs0, "slot_status.checksum.sha256"),
+                "bundle.compatible": self.deep_get(rootfs0, "slot_status.bundle.compatible"),
+                "device": rootfs0["device"],
+                "boot-status": self.deep_get(rootfs0, "slot_status.status"),
+                "size": self.deep_get(rootfs0, "slot_status.checksum.size"),
+                "bundle.build": self.deep_get(rootfs0, "slot_status.bundle.build"),
+                "activated.timestamp": self.deep_get(rootfs0, "slot_status.activated.timestamp"),
+                "installed.timestamp": self.deep_get(rootfs0, "slot_status.installed.timestamp"),
+                "state": rootfs0["state"],
+                "bootname": rootfs0["bootname"],
+                "class": rootfs0["class"],
+                "bundle.version": self.deep_get(rootfs0, "slot_status.bundle.version"),
+                "bundle.description": self.deep_get(rootfs0, "slot_status.bundle.description"),
+                "description": None,
+                "activated.count": self.deep_get(rootfs0, "slot_status.activated.count")
+            },
+            "rootfs1": {
+                "installed.count": self.deep_get(rootfs1, "slot_status.installed.count"),
+                "status": self.deep_get(rootfs1, "slot_status.status"),
+                "type": rootfs1["type"],
+                "sha256": self.deep_get(rootfs1, "slot_status.checksum.sha256"),
+                "bundle.compatible": self.deep_get(rootfs1, "slot_status.bundle.compatible"),
+                "device": rootfs1["device"],
+                "boot-status": self.deep_get(rootfs1, "slot_status.status"),
+                "size": self.deep_get(rootfs1, "slot_status.checksum.size"),
+                "bundle.build": self.deep_get(rootfs1, "slot_status.bundle.build"),
+                "activated.timestamp": self.deep_get(rootfs1, "slot_status.activated.timestamp"),
+                "installed.timestamp": self.deep_get(rootfs1, "slot_status.installed.timestamp"),
+                "state": rootfs1["state"],
+                "bootname": rootfs1["bootname"],
+                "class": rootfs1["class"],
+                "bundle.version": self.deep_get(rootfs1, "slot_status.bundle.version"),
+                "bundle.description": self.deep_get(rootfs1, "slot_status.bundle.description"),
+                "description": None,
+                "activated.count": self.deep_get(rootfs1, "slot_status.activated.count")
+            }
+        }
         return slot_status
 
     def mark_partition(self, state, partition):
-        return self.iface.Mark(state, partition)
+        mark_result = self.dbus_proxy.call_sync('Mark', GLib.Variant(
+            '(ss)', ("active", "rootfs.0")), Gio.DBusCallFlags.NO_AUTO_START, 500, None)
+        return mark_result
 
     def install(self, path):
-        self.iface.Install(path)
-        self.iface.on('Completed', lambda nb: self.reboot_after_install(nb))
-    
+        try:
+            self.dbus_proxy.call_sync('Install',
+                                      GLib.Variant('(s)', (path)),
+                                      Gio.DBusCallFlags.NO_AUTO_START, 1000 * 60 * 10, None)
+            self.reboot_after_install()
+        except Exception as e:
+            print(f"Error in rauc_handler.install: {e}")
+
     def reboot_after_install(self, nb):
         print("Received completed from RAUC interface")
-        os.system("sudo /sbin/reboot") 
+        os.system("/sbin/reboot")
+
+    def deep_get(self, dictionary, keys, default=None):
+        return reduce(lambda d, key: d.get(key, default) if isinstance(d, dict) else default, keys.split("."), dictionary)
