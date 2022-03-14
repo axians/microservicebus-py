@@ -33,14 +33,15 @@ class Orchestrator(BaseService):
         await self.StartService(msbHandler)
         vpnHelper = VPNHelper("vpnhelper", self.queue)
         await self.StartService(vpnHelper)
+
         # region
-        text = """
+        text = """\033[92m
            _               ____                  _          ____             
  _ __ ___ (_) ___ _ __ ___/ ___|  ___ _ ____   _(_) ___ ___| __ ) _   _ ___  
 | '_ ` _ \\| |/ __| '__/ _ \\___ \\ / _ \\ '__\\ \\ / / |/ __/ _ \\  _ \\| | | / __| 
 | | | | | | | (__| | | (_) |__) |  __/ |   \\ V /| | (_|  __/ |_) | |_| \\__ \\ 
-|_| |_| |_|_|\\___|_|  \\___/____/ \\___|_|    \\_/ |_|\\___\\___|____/ \\__,_|___/ \n\n"""
-        await self.Debug(text)
+|_| |_| |_|_|\\___|_|  \\___/____/ \\___|_|    \\_/ |_|\\___\\___|____/ \\__,_|___/ \n\033[1mAXIANS IoT Operations - Python IoT agent\nfor more information visit https://microservicebus.com\n\033[0m"""
+        print(text)
         # endregion
 
         await self.Debug("Started")

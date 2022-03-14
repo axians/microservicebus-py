@@ -8,7 +8,6 @@ from base_service import BaseService
 
 class VPNHelper(BaseService):
     def __init__(self, id, queue):
-        print("start vpn helper")
         super(VPNHelper, self).__init__(id, queue)
 
     async def Start(self):
@@ -19,14 +18,9 @@ class VPNHelper(BaseService):
     async def msb_signed_in(self, args):
         try:
             # Check if wireguard is installed
-            response = subprocess.run(
-                "wg --help", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+            response = subprocess.run("wg --help", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
             if(response.returncode != 0):
                 return
-
-            # Use pip in utils.py
-            self.AddPipPackage("wireguard", "wireguard", "Server")
-            await self.Debug("WireGuard is installed")
 
             message = [1, 2, 3]
             await self.SubmitAction("msb", "refresh_vpn_settings", message[0])
