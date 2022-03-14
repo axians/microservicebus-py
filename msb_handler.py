@@ -170,50 +170,46 @@ class microServiceBusHandler(BaseService):
         self.connection.send("heartBeat", ["hej"])
 
     def report_state(self, id):
-        self.connection.send('notify', [
-                             id, 'Fetching environment state from ' + self.settings["nodeName"], 'INFO'])
-        memory_info = psutil.virtual_memory()
-        if_addrs = psutil.net_if_addrs()
-        cpu_times = psutil.cpu_times()
-        disk_info = psutil.disk_usage('/')
-        slot_status = dict(self.rauc_handler.get_slot_status())
-        state = {
-            "networks": [],
-            "memory": {
-                "totalMem": f'{(memory_info.total / 1000 / 1000):9.2f} Mb',
-                "freemem": f'{(memory_info.free / 1000 / 1000):9.2f} Mb'
-            },
-            "cpus": [{
-                "model": platform.processor(),
-                "speed": psutil.cpu_freq().current,
-                "times": {
-                    "user": cpu_times.user,
-                    "nice": cpu_times.nice,
-                    "sys": cpu_times.system,
-                    "idle": cpu_times.idle
-                }
-            }],
-            "env": dict(os.environ),
-            "storage": {
-                "available": f'{(disk_info.total / 1000 / 1000):9.2f} Mb',
-                "free": f'{(disk_info.free / 1000 / 1000):9.2f} Mb',
-                "total": f'{(disk_info.total / 1000 / 1000):9.2f} Mb'
-            },
-            "raucState": {
-                "rootfs0": slot_status["rootfs.0"],
-                "rootfs1": slot_status["rootfs.1"]
+            self.connection.send('notify', [
+                                id, 'Fetching environment state from ' + self.settings["nodeName"], 'INFO'])
+            memory_info = psutil.virtual_memory()
+            if_addrs = psutil.net_if_addrs()
+            cpu_times = psutil.cpu_times()
+            disk_info = psutil.disk_usage('/')
+            slot_status = self.rauc_handler.get_slot_status()
+            state = {
+                "networks": [],
+                "memory": {
+                    "totalMem": f'{(memory_info.total / 1000 / 1000):9.2f} Mb',
+                    "freemem": f'{(memory_info.free / 1000 / 1000):9.2f} Mb'
+                },
+                "cpus": [{
+                    "model": platform.processor(),
+                    "speed": None,
+                    "times": {
+                        "user": cpu_times.user,
+                        "nice": cpu_times.nice,
+                        "sys": cpu_times.system,
+                        "idle": cpu_times.idle
+                    }
+                }],
+                "env": dict(os.environ),
+                "storage": {
+                    "available": f'{(disk_info.total / 1000 / 1000):9.2f} Mb',
+                    "free": f'{(disk_info.free / 1000 / 1000):9.2f} Mb',
+                    "total": f'{(disk_info.total / 1000 / 1000):9.2f} Mb'
+                },
+                "raucState": slot_status
             }
-        }
-        print(state)
-        # Get all internet interfaces
-        # for interface_name, interface_addresses in if_addrs.items():
-        #     for address in interface_addresses:
-        #         if str(address.family) == 'AddressFamily.AF_INET':
-        #             print(address)
-        #             print(interface_name)
-        # gateway_ip, ip_address, mac_address, name, netmask, type
-        self.connection.send('reportStateResponse', [state, id])
-
+            print(state)
+            # Get all internet interfaces
+            # for interface_name, interface_addresses in if_addrs.items():
+            #     for address in interface_addresses:
+            #         if str(address.family) == 'AddressFamily.AF_INET':
+            #             print(address)
+            #             print(interface_name)
+            # gateway_ip, ip_address, mac_address, name, netmask, type
+            self.connection.send('reportStateResponse', [state, id])
     def update_firmware(self, force, connid):
         print(force)
         print(connid)
