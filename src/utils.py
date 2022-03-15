@@ -1,4 +1,4 @@
-import subprocess, sys, importlib, socket
+import subprocess, sys, importlib, socket, array, struct, fcntl, netifaces 
 import pip._internal as pip
 
 def install(package):
@@ -11,16 +11,9 @@ def install_module(module):
     for package in module["packages"]:
         try:            
             importlib.import_module(package["name"])
-            #print(f'{package["package"]} is already installed..')
         except ImportError:
-            #print(f'Trying to install {package["package"]}..')
             try:
                 pip.main(['install', package["package"]])
-                # cmd = f"{sys.executable} -m pip install {package["package"]}"
-                # print(f"command: {cmd}")
-                # subprocess.check_call(cmd, shell=True)
-                #subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-                #subprocess.call([sys.executable, "-m", "pip", "install", "--user", package])
                 print(f'{package["package"]} has been installed..')
             except TypeError as err:
                 print('Handling run-time error:', err)
@@ -31,3 +24,8 @@ def get_public_ip():
     ip = s.getsockname()[0]
     s.close()
     return ip
+
+def getHwAddr(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', bytes(ifname, 'utf-8')[:15]))
+    return ':'.join('%02x' % b for b in info[18:24])

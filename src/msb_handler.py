@@ -16,6 +16,8 @@ import glob
 import urllib.request
 import threading
 import platform
+import netifaces
+import utils
 from packaging import version
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from pathlib import Path
@@ -73,9 +75,17 @@ class microServiceBusHandler(BaseService):
             os.mkdir(self.msb_dir)
 
         # Load settings file if exists
-        if os.path.isfile(self.msb_settings_path):
+        print(self.msb_settings_path)
+        if os.path.exists(self.msb_settings_path):
+            print("Settings exists")
             with open(self.msb_settings_path) as f:
                 settings = json.load(f)
+        else:
+            print("Creating settings")
+            settings = {
+                "hubUri": self.base_uri
+            }
+            self.save_settings(settings)
         return settings
 
     def save_settings(self, settings):
@@ -105,7 +115,9 @@ class microServiceBusHandler(BaseService):
             "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
         }
         
-        self.connection.send("signInAsync", [hostData])
+        # Use for debugging
+        self.connection.send("signIn", [hostData])
+        #self.connection.send("signInAsync", [hostData])
 
     def sign_in_sync(self, settings, first_sign_in):
         asyncio.run(self.sign_in(settings, first_sign_in))
@@ -140,6 +152,14 @@ class microServiceBusHandler(BaseService):
 
         except Exception as e:
             asyncio.run(self.ThrowError(f"Error in msb.start_azure_iot_service: {e}"))
+    
+    async def refresh_vpn_settings(self, args):
+        self.connection.send("getVpnSettings", [""])
+
+    async def update_vpn_endpoint(self, args):
+        self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
+
+
     # endregion
     # region SignalR event listeners
     async def set_up_signalr(self):
@@ -172,12 +192,11 @@ class microServiceBusHandler(BaseService):
         self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("heartBeat", lambda messageList: print("Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
-        self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
-            firmware_response[0], firmware_response[1]))
-        self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(
-            boot_info[0], boot_info[1]))
+        self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware( firmware_response[0], firmware_response[1]))
+        self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(boot_info[0], boot_info[1]))
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(vpn_response[0], vpn_response[1], vpn_response[2]))
-        self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
+        self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings_sync(response))
+        self.connection.on("sendMessage", lambda args: self.debug_sync(args[0]))
 
         # region Not implemented event handlers
         self.connection.on("getEndpoints", lambda response: self.not_implemented("getEndpoints"))
@@ -185,7 +204,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("changeState", lambda response: self.not_implemented("changeState"))
         self.connection.on("changeDebug", lambda response: self.not_implemented("changeDebug"))
         self.connection.on("changeTracking", lambda response: self.not_implemented("changeTracking"))
-        self.connection.on("sendMessage", lambda response: self.not_implemented("sendMessage"))
+        #self.connection.on("sendMessage", lambda response: self.not_implemented("sendMessage"))
         self.connection.on("forceUpdate", lambda response: self.not_implemented("forceUpdate"))
         self.connection.on("restartCom", lambda response: self.not_implemented("restartCom"))
         self.connection.on("shutdown", lambda response: self.not_implemented("shutdown"))
@@ -289,47 +308,53 @@ class microServiceBusHandler(BaseService):
         self.connection.send("heartBeat", ["echo"])
 
     def report_state(self, id):
-            self.connection.send('notify', [
-                                id, 'Fetching environment state from ' + self.settings["nodeName"], 'INFO'])
-            memory_info = psutil.virtual_memory()
-            if_addrs = psutil.net_if_addrs()
-            cpu_times = psutil.cpu_times()
-            disk_info = psutil.disk_usage('/')
-            slot_status = self.rauc_handler.get_slot_status()
-            state = {
-                "networks": [],
-                "memory": {
-                    "totalMem": f'{(memory_info.total / 1000 / 1000):9.2f} Mb',
-                    "freemem": f'{(memory_info.free / 1000 / 1000):9.2f} Mb'
-                },
-                "cpus": [{
-                    "model": platform.processor(),
-                    "speed": None,
-                    "times": {
-                        "user": cpu_times.user,
-                        "nice": cpu_times.nice,
-                        "sys": cpu_times.system,
-                        "idle": cpu_times.idle
-                    }
-                }],
-                "env": dict(os.environ),
-                "storage": {
-                    "available": f'{(disk_info.total / 1000 / 1000):9.2f} Mb',
-                    "free": f'{(disk_info.free / 1000 / 1000):9.2f} Mb',
-                    "total": f'{(disk_info.total / 1000 / 1000):9.2f} Mb'
-                },
-                "raucState": slot_status
-            }
-            print(state)
-            # Get all internet interfaces
-            # for interface_name, interface_addresses in if_addrs.items():
-            #     for address in interface_addresses:
-            #         if str(address.family) == 'AddressFamily.AF_INET':
-            #             print(address)
-            #             print(interface_name)
-            # gateway_ip, ip_address, mac_address, name, netmask, type
-            self.connection.send('notify', [state, id])
-    
+        node_name = self.settings["nodeName"]
+        print( f'Fetching environment state from {node_name}')
+        self.connection.send('notify', [id, f'Fetching environment state from {node_name}' , 'INFO'])
+        
+        networks = []
+        interfaces = netifaces.interfaces()
+        for interface in interfaces:
+            addrs = netifaces.ifaddresses(interface)
+            if netifaces.AF_INET in addrs.keys():
+                ni = {
+                        "name": interface, 
+                        "ip_address":addrs[netifaces.AF_INET][0]["addr"], 
+                        "mac_address": utils.getHwAddr(interface), 
+                        "netmask":addrs[netifaces.AF_INET][0]["netmask"],
+                        "type": ''}
+                networks.append(ni)
+        memory_info = psutil.virtual_memory()
+        if_addrs = psutil.net_if_addrs()
+        cpu_times = psutil.cpu_times()
+        disk_info = psutil.disk_usage('/')
+        slot_status = self.rauc_handler.get_slot_status()
+        state = {
+            "networks": networks,
+            "memory": {
+                "totalMem": f'{(memory_info.total / 1000 / 1000):9.2f} Mb',
+                "freemem": f'{(memory_info.free / 1000 / 1000):9.2f} Mb'
+            },
+            "cpus": [{
+                "model": platform.processor(),
+                "speed": None,
+                "times": {
+                    "user": cpu_times.user,
+                    "nice": cpu_times.nice,
+                    "sys": cpu_times.system,
+                    "idle": cpu_times.idle
+                }
+            }],
+            "env": dict(os.environ),
+            "storage": {
+                "available": f'{(disk_info.total / 1000 / 1000):9.2f} Mb',
+                "free": f'{(disk_info.free / 1000 / 1000):9.2f} Mb',
+                "total": f'{(disk_info.total / 1000 / 1000):9.2f} Mb'
+            },
+            "raucState": slot_status
+        }
+        self.connection.send('reportStateResponse', [state, id])
+
     def reset(self, id):
         asyncio.run(self.Debug("\033[93mResetting node\033[0m"))
         node_name = self.settings["nodeName"]
@@ -402,11 +427,8 @@ class microServiceBusHandler(BaseService):
         t.start()
         return t
 
-    async def refresh_vpn_settings(self, args):
+    def refresh_vpn_settings_sync(self, args):
         self.connection.send("getVpnSettings", [""])
-
-    async def update_vpn_endpoint(self, args):
-        self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
 
     def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
         message = {'vpnConfig': vpnConfig,
