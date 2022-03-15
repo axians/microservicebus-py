@@ -22,8 +22,10 @@ class RaucHandler():
             print("ups")
 
     def get_slot_status(self):
-        response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE,
-                      stderr=subprocess.STDOUT, text=True, shell=True)
+        response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+        if response.returncode != 0:
+            return None
+            
         result = json.loads(response.stdout)
         rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)["rootfs.0"]
         print(rootfs0)
