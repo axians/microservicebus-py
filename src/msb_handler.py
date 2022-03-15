@@ -100,11 +100,15 @@ class microServiceBusHandler(BaseService):
             "OrganizationID": settings["organizationId"],
             "npmVersion": "3.12.3",
             "sas": settings["sas"],
-            "recoveredSignIn": False,
-            "ipAddresses": "",
-            "macAddresses": ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+            "recoveredSignIn": "False",
+            #"ipAddresses": "",
+            "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
         }
-        self.connection.send("signIn", [hostData])
+        
+        self.connection.send("signInAsync", [hostData])
+
+    def sign_in_sync(self, settings, first_sign_in):
+        asyncio.run(self.sign_in(settings, first_sign_in))
 
     async def create_node(self):
         mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
@@ -138,7 +142,6 @@ class microServiceBusHandler(BaseService):
             asyncio.run(self.ThrowError(f"Error in msb.start_azure_iot_service: {e}"))
     # endregion
     # region SignalR event listeners
-
     async def set_up_signalr(self):
         self.handler = logging.StreamHandler()
         self.handler.setLevel(logging.DEBUG)
@@ -160,13 +163,13 @@ class microServiceBusHandler(BaseService):
         self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown closed{data.error}"))
 
         # mSB.com listeners
-        self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in(sign_in_info[0], True))
+        self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
         self.connection.on("ping", lambda conn_id: self.ping_response(conn_id[0]))
-        self.connection.on("errorMessage", print)
-        self.connection.on("restart", lambda args: os.execv(
-            sys.executable, ['python'] + sys.argv))
+        self.connection.on("errorMessage", lambda arg: self.debug_sync(arg[0]))
+        self.connection.on("restart", lambda args: os.execv( sys.executable, ['python'] + sys.argv))
         self.connection.on("reboot", lambda args: os.system("/sbin/reboot"))
+        self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("heartBeat", lambda messageList: print("Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
@@ -175,6 +178,47 @@ class microServiceBusHandler(BaseService):
             boot_info[0], boot_info[1]))
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(vpn_response[0], vpn_response[1], vpn_response[2]))
         self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings(response))
+
+        # region Not implemented event handlers
+        self.connection.on("getEndpoints", lambda response: self.not_implemented("getEndpoints"))
+        self.connection.on("updateItinerary", lambda response: self.not_implemented("updateItinerary"))
+        self.connection.on("changeState", lambda response: self.not_implemented("changeState"))
+        self.connection.on("changeDebug", lambda response: self.not_implemented("changeDebug"))
+        self.connection.on("changeTracking", lambda response: self.not_implemented("changeTracking"))
+        self.connection.on("sendMessage", lambda response: self.not_implemented("sendMessage"))
+        self.connection.on("forceUpdate", lambda response: self.not_implemented("forceUpdate"))
+        self.connection.on("restartCom", lambda response: self.not_implemented("restartCom"))
+        self.connection.on("shutdown", lambda response: self.not_implemented("shutdown"))
+        self.connection.on("refreshSnap", lambda response: self.not_implemented("refreshSnap"))
+        self.connection.on("resetKeepEnvironment", lambda response: self.not_implemented("resetKeepEnvironment"))
+        self.connection.on("updateFlowState", lambda response: self.not_implemented("updateFlowState"))
+        self.connection.on("enableDebug", lambda response: self.not_implemented("enableDebug"))
+        self.connection.on("uploadSyslogs", lambda response: self.not_implemented("uploadSyslogs"))
+        self.connection.on("resendHistory", lambda response: self.not_implemented("resendHistory"))
+        self.connection.on("requestHistory", lambda response: self.not_implemented("requestHistory"))
+        self.connection.on("transferToPrivate", lambda response: self.not_implemented("transferToPrivate"))
+        self.connection.on("grantAccess", lambda response: self.not_implemented("grantAccess"))
+        self.connection.on("runTest", lambda response: self.not_implemented("runTest"))
+        self.connection.on("pingNodeTest", lambda response: self.not_implemented("pingNodeTest"))
+        self.connection.on("updatePolicies", lambda response: self.not_implemented("updatePolicies"))
+        self.connection.on("executeScript", lambda response: self.not_implemented("executeScript"))
+        self.connection.on("updateVulnerabilities", lambda response: self.not_implemented("updateVulnerabilities"))
+        self.connection.on("dockerListImages", lambda response: self.not_implemented("dockerListImages"))
+        self.connection.on("dockerListContainers", lambda response: self.not_implemented("dockerListContainers"))
+        self.connection.on("dockerInstallImage", lambda response: self.not_implemented("dockerInstallImage"))
+        self.connection.on("dockerDeleteImage", lambda response: self.not_implemented("dockerDeleteImage"))
+        self.connection.on("dockerStartContainer", lambda response: self.not_implemented("dockerStartContainer"))
+        self.connection.on("dockerStopContainer", lambda response: self.not_implemented("dockerStopContainer"))
+        self.connection.on("dockerComposeList", lambda response: self.not_implemented("dockerComposeList"))
+        self.connection.on("dockerComposeInstall", lambda response: self.not_implemented("dockerComposeInstall"))
+        self.connection.on("dockerComposeUp", lambda response: self.not_implemented("dockerComposeUp"))
+        self.connection.on("dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
+        self.connection.on("startTerminal", lambda response: self.not_implemented("startTerminal"))
+        self.connection.on("stopTerminal", lambda response: self.not_implemented("stopTerminal"))
+        self.connection.on("terminalCommand", lambda response: self.not_implemented("terminalCommand"))
+        self.connection.on("downloadFile", lambda response: self.not_implemented("downloadFile"))
+        self.connection.on("uploadFile", lambda response: self.not_implemented("uploadFile"))
+        # endregion
 
         self.connection.start()
         time.sleep(1)
@@ -188,7 +232,7 @@ class microServiceBusHandler(BaseService):
 
         asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
         self.save_settings(sign_in_response)
-        
+
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
 
         if sign_in_response['protocol'] == "AZUREIOT":
@@ -232,6 +276,9 @@ class microServiceBusHandler(BaseService):
                 asyncio.run(self.Debug(f"Loading module {module_name}"))
 
         self.sendHeartbeat()
+
+    def not_implemented(self, event_handler):
+        asyncio.run(self.ThrowError(f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
 
     def ping_response(self, conn_id):
         print("Ping response")
@@ -281,8 +328,18 @@ class microServiceBusHandler(BaseService):
             #             print(address)
             #             print(interface_name)
             # gateway_ip, ip_address, mac_address, name, netmask, type
-            self.connection.send('reportStateResponse', [state, id])
+            self.connection.send('notify', [state, id])
     
+    def reset(self, id):
+        asyncio.run(self.Debug("\033[93mResetting node\033[0m"))
+        node_name = self.settings["nodeName"]
+        settings = {
+            "hubUri": self.base_uri
+        }
+        self.save_settings(settings)
+        self.connection.send('notify', [id, f"Node {node_name} has been reset", "INFO"])
+        os.execv( sys.executable, ['python'] + sys.argv)
+
     def update_firmware(self, force, connid):
         print(force)
         print(connid)
