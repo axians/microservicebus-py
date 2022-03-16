@@ -14,14 +14,14 @@ README = (HERE / "README.md").read_text()
 
 # This call to setup() does all the work
 setup(
-    name="test-project-jenny",
+    name="microservicebus-py",
     version="1.0.0",
-    description="Read the latest Real Python tutorials",
+    description="Python agent for microServiceBus.com. Please visit https://microservicebus.com for more information."",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://github.com/realpython/reader",
-    author="Real Python",
-    author_email="info@realpython.com",
+    url="https://github.com/axians/microservicebus-py",
+    author="AXIANS IoT Operations",
+    author_email="microservicebus@axians.com",
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",
