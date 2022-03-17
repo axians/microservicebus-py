@@ -16,7 +16,6 @@ import glob
 import urllib.request
 import threading
 import platform
-import netifaces
 import utils
 from packaging import version
 from signalrcore.hub_connection_builder import HubConnectionBuilder
@@ -313,17 +312,17 @@ class microServiceBusHandler(BaseService):
         self.connection.send('notify', [id, f'Fetching environment state from {node_name}' , 'INFO'])
         
         networks = []
-        interfaces = netifaces.interfaces()
-        for interface in interfaces:
-            addrs = netifaces.ifaddresses(interface)
-            if netifaces.AF_INET in addrs.keys():
-                ni = {
-                        "name": interface, 
-                        "ip_address":addrs[netifaces.AF_INET][0]["addr"], 
-                        "mac_address": utils.getHwAddr(interface), 
-                        "netmask":addrs[netifaces.AF_INET][0]["netmask"],
-                        "type": ''}
-                networks.append(ni)
+        # interfaces = netifaces.interfaces()
+        # for interface in interfaces:
+        #     addrs = netifaces.ifaddresses(interface)
+        #     if netifaces.AF_INET in addrs.keys():
+        #         ni = {
+        #                 "name": interface, 
+        #                 "ip_address":addrs[netifaces.AF_INET][0]["addr"], 
+        #                 "mac_address": utils.getHwAddr(interface), 
+        #                 "netmask":addrs[netifaces.AF_INET][0]["netmask"],
+        #                 "type": ''}
+        #         networks.append(ni)
         memory_info = psutil.virtual_memory()
         if_addrs = psutil.net_if_addrs()
         cpu_times = psutil.cpu_times()

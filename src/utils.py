@@ -1,4 +1,4 @@
-import subprocess, sys, importlib, socket, array, struct, fcntl, netifaces 
+import subprocess, sys, importlib, socket, array, struct, fcntl 
 import pip._internal as pip
 
 def install(package):

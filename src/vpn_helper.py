@@ -1,7 +1,6 @@
 import sys
 import subprocess
 import asyncio
-import netifaces
 import utils
 from xmlrpc.client import Server
 from base_service import BaseService
