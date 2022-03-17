@@ -14,7 +14,7 @@ With the microservicebus-py Node, everything is about services communicating ove
 
 ## Requirements
 
-### Prereqsites
+### Prerequisites
 
 ```
 apt-get install pkg-config libcairo2-dev gcc python3-dev libgirepository1.0-dev
