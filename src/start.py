@@ -1,6 +1,9 @@
 #!/usr/bin/env python3.7
-import asyncio, logging, os, sys
-sys.path.insert(1, './src')
+import asyncio
+import logging
+import os
+import sys
+sys.path.insert(1, os.path.dirname(__file__))
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(
@@ -12,7 +15,6 @@ logging.basicConfig(
 def main():
     try:
         print(f"pid: {os.getpid()}")
-        #sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         sys.path.append(os.path.abspath('../lib'))
 
         orchestrator = Orchestrator("orchestrator", asyncio.Queue())
