@@ -128,6 +128,11 @@ class microServiceBusHandler(BaseService):
 
     def start_azure_iot_service(self, sign_in_response):
         try:
+            state = sign_in_response["state"]
+            asyncio.run(self.Debug(f"Device state is {state}"))
+            if state == "InActive":
+                return
+
             file_name = "pythonAzureIoTProvider.py"
             uri = f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
             service_file = requests.get(uri, allow_redirects=True)

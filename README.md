@@ -41,6 +41,33 @@ docker build -t microservicebus-py .;
 docker run -it --rm microservicebus-py
 ```
 
+## Publish to pip
+1. To be able to upload package
+```
+pip install twine
+```
+2. To be able to build package 
+```
+pip install wheel
+```
+3. Before building the project, remove all files in /dist folder
+4. To build and convert to tar
+```
+python3 setup.py sdist bdist_wheel
+```
+5. Check if created correctly : twine check dist/*
+```
+twine check dist/*
+```
+6. To publish to TestPyPi
+```
+twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+```
+7. Publish to PyPi
+```
+twine upload dist/*
+```
+
 ## BaseService (base_service)
 
 All services inherit from _BaseService_ either directly or through _CustomService_. Inheriting from _BaseService_ provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also call `self.SubmitAction(destination, action, message)` to more flexibility is needed.
