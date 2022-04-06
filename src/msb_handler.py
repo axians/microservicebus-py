@@ -5,6 +5,7 @@ import uuid
 import re
 import os
 import sys
+import traceback
 import socket
 import requests
 import os
@@ -31,6 +32,9 @@ class microServiceBusHandler(BaseService):
         self.base_uri = "https://microservicebus.com"
         home = str(Path.home())
         self.msb_dir = f"{os.environ['HOME']}/msb-py"
+
+        self.printf(f"os.environ =  {os.environ}")
+
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
         self.rauc_handler = RaucHandler()
@@ -49,13 +53,15 @@ class microServiceBusHandler(BaseService):
                 await self.Debug("Create node using mac address")
 
                 await self.create_node()
+
             else:
                 await self.sign_in(self.settings, False)
 
             while True:
                 await asyncio.sleep(0.1)
         except Exception as e:
-            self.ThrowError(f"Error in msb.start: {e}")
+            await self.ThrowError(f"Error in msb.start: {e}")
+            await self.ThrowError(traceback.format_exc())
 
     async def _debug(self, message):
         pass
@@ -74,13 +80,13 @@ class microServiceBusHandler(BaseService):
             os.mkdir(self.msb_dir)
 
         # Load settings file if exists
-        print(self.msb_settings_path)
+        self.printf(self.msb_settings_path)
         if os.path.exists(self.msb_settings_path):
-            print("Settings exists")
+            self.printf("Settings exists")
             with open(self.msb_settings_path) as f:
                 settings = json.load(f)
         else:
-            print("Creating settings")
+            self.printf("Creating settings")
             settings = {
                 "hubUri": self.base_uri
             }
@@ -93,7 +99,7 @@ class microServiceBusHandler(BaseService):
     
     async def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
-            print("Node created successfully")
+            self.printf("Node created successfully")
             self.save_settings(settings)
         
         await self.Debug("Signing in")
@@ -194,7 +200,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("restart", lambda args: os.execv( sys.executable, ['python'] + sys.argv))
         self.connection.on("reboot", lambda args: os.system("/sbin/reboot"))
         self.connection.on("reset", lambda args: self.reset(args[0]))
-        self.connection.on("heartBeat", lambda messageList: print("Heartbeat received: " + " ".join(messageList)))
+        self.connection.on("heartBeat", lambda messageList: self.printf("Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware( firmware_response[0], firmware_response[1]))
         self.connection.on("setBootPartition", lambda boot_info: self.set_boot_partition(boot_info[0], boot_info[1]))
@@ -264,39 +270,40 @@ class microServiceBusHandler(BaseService):
         if os.path.isdir(self.service_path) == False:
             os.mkdir(self.service_path)
 
-        for itinerary in sign_in_response['itineraries']:
-            pythonActivities = [srv for srv in itinerary["activities"] if srv["userData"]["baseType"] == 'pythonfile']
-            for pythonActivity in pythonActivities:
+        if sign_in_response['itineraries'] is not None:
+            for itinerary in sign_in_response['itineraries']:
+                pythonActivities = [srv for srv in itinerary["activities"] if srv["userData"]["baseType"] == 'pythonfile']
+                for pythonActivity in pythonActivities:
 
-                host_config = [srv for srv in pythonActivity["userData"]["config"]["generalConfig"] if srv["id"] == 'host']
+                    host_config = [srv for srv in pythonActivity["userData"]["config"]["generalConfig"] if srv["id"] == 'host']
 
-                # Check if activity is set to run on node 
-                if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
-                    continue
+                    # Check if activity is set to run on node 
+                    if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
+                        continue
 
-                organization_id = sign_in_response["organizationId"]
-                file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
+                    organization_id = sign_in_response["organizationId"]
+                    file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
 
-                uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"]["isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
-               
-                service_file = requests.get(uri, allow_redirects=True)
-                service_file_name = os.path.join(self.service_path, file_name)
+                    uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"]["isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
                 
-                file = open(service_file_name, 'wb+')
-                file.write(service_file.content)
-                file.close()
+                    service_file = requests.get(uri, allow_redirects=True)
+                    service_file_name = os.path.join(self.service_path, file_name)
+                    
+                    file = open(service_file_name, 'wb+')
+                    file.write(service_file.content)
+                    file.close()
 
-                module_name = pythonActivity["userData"]["type"].replace("_py", "")
-                service_name = pythonActivity["userData"]["type"]
-                service_config = pythonActivity["userData"]["config"]
+                    module_name = pythonActivity["userData"]["type"].replace("_py", "")
+                    service_name = pythonActivity["userData"]["type"]
+                    service_config = pythonActivity["userData"]["config"]
 
-                spec = importlib.util.spec_from_file_location(module_name, service_file_name)
-                module = importlib.util.module_from_spec(spec) 
-                spec.loader.exec_module(module)
-                MicroService = getattr(module, module_name)
-                microService = MicroService(service_name.lower(), self.queue, service_config) #(id, queue, config)
-                asyncio.run(self.StartService(microService))
-                asyncio.run(self.Debug(f"Loading module {module_name}"))
+                    spec = importlib.util.spec_from_file_location(module_name, service_file_name)
+                    module = importlib.util.module_from_spec(spec) 
+                    spec.loader.exec_module(module)
+                    MicroService = getattr(module, module_name)
+                    microService = MicroService(service_name.lower(), self.queue, service_config) #(id, queue, config)
+                    asyncio.run(self.StartService(microService))
+                    asyncio.run(self.Debug(f"Loading module {module_name}"))
 
         self.sendHeartbeat()
 
@@ -304,7 +311,7 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.ThrowError(f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
 
     def ping_response(self, conn_id):
-        print("Ping response")
+        self.printf("Ping response")
         settings = self.get_settings()
         self.connection.send("pingResponse", [settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
 
@@ -313,7 +320,7 @@ class microServiceBusHandler(BaseService):
 
     def report_state(self, id):
         node_name = self.settings["nodeName"]
-        print( f'Fetching environment state from {node_name}')
+        self.printf( f'Fetching environment state from {node_name}')
         self.connection.send('notify', [id, f'Fetching environment state from {node_name}' , 'INFO'])
         
         networks = []
@@ -370,8 +377,8 @@ class microServiceBusHandler(BaseService):
         os.execv( sys.executable, ['python'] + sys.argv)
 
     def update_firmware(self, force, connid):
-        print(force)
-        print(connid)
+        self.printf(force)
+        self.printf(connid)
         platform_status = dict(self.rauc_handler.get_slot_status())
         rootfs0_status = platform_status["rootfs.0"]["state"]
         current_platform = platform_status["rootfs.0"] if rootfs0_status == "booted" else platform_status["rootfs.1"]
@@ -382,42 +389,42 @@ class microServiceBusHandler(BaseService):
 
         uri = "https://microservicebus.com/api/nodeimages/" + \
             self.get_settings()["organizationId"] + "/" + platform
-        print("Notified on new firmware")
-        print("Current firmware platform: " + platform)
-        print("Current firmware version: " + current_version)
-        print("Current boot status: " + boot_status)
-        print("Current firmware installed: " + installed)
+        self.printf("Notified on new firmware")
+        self.printf("Current firmware platform: " + platform)
+        self.printf("Current firmware version: " + current_version)
+        self.printf("Current boot status: " + boot_status)
+        self.printf("Current firmware installed: " + installed)
 
-        print("Fetching meta data from: " + uri)
+        self.printf("Fetching meta data from: " + uri)
 
         response = requests.get(uri)
         if(response.status_code != 200):
-            print("No firmware image found")
+            self.printf("No firmware image found")
             return
         metamodel = response.json()
         if(force or version.parse(metamodel["version"]) > version.parse(current_version)):
-            print("New firmware version found")
-            dir = "/data/home/msb-py/firmwareimages/"
+            self.printf("New firmware version found")
+            dir = f"{self.msb_dir}/firmwareimages/"
             # Check if directory exists
             if os.path.isdir(dir) == False:
                 os.mkdir(dir)
             files = glob.glob(dir + "*")
             for f in files:
                 os.remove(f)
-            print("Files removed")
+            self.printf("Files removed")
             file_name = os.path.join(dir, os.path.basename(metamodel["uri"]))
-            print(file_name)
+            self.printf(file_name)
             urllib.request.urlretrieve(metamodel["uri"], file_name)
-            print("Download complete")
-            print("Calling RAUC")
-            print(f"Installing {file_name}")
+            self.printf("Download complete")
+            self.printf("Calling RAUC")
+            self.printf(f"Installing {file_name}")
 
             self.rauc_handler.install(file_name)
 
     def set_boot_partition(self, partition, connid):
-        print(f"Marking partition {partition}")
+        self.printf(f"Marking partition {partition}")
         self.rauc_handler.mark_partition("active", partition)
-        print("Successfully marked partition")
+        self.printf("Successfully marked partition")
         self.connection.send(
             "notify", [connid, f"Successfully marked partition.", "INFO"])
         time.sleep(10)

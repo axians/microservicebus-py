@@ -25,7 +25,7 @@ class VPNHelper(BaseService):
             await self.SubmitAction("msb", "refresh_vpn_settings", message[0])
 
         except subprocess.CalledProcessError as e:
-            print(e.output)
+            self.printf(e.output)
 
     async def get_vpn_settings_response(self, args):
         try:

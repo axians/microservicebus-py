@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 import pip
 import importlib
 from queue_message import QueueMessage
@@ -10,6 +11,9 @@ class BaseService:
         self.queue = queue
         self.task = None
 
+    def printf(self, msg):
+        print(msg, flush=True)
+        
     # region Default functions
     async def Start(self):
         pass
@@ -78,13 +82,20 @@ class BaseService:
     def AddPipPackage(self, package, module, name):
         try:
             try:
-                print(f"Importing {module}")
+                self.printf(f"Importing {module}")
                 importlib.import_module(module)
             except Exception as e1:
-                print (f"Unable to import module:. \nTrying to install package {package}")
-                pip.main(['install', package])
+                self.printf (f"Unable to import module:. \nTrying to install package {package}")
+                #pip.main(['install', package])
+                response = subprocess.run(f"pip3 install {package}", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+                if(response.returncode != 0):
+                    self.printf (f"Failed to install {package}")
+                    raise Exception('InstallPackage', f"Failed to install {package}")
+                else:
+                     self.printf (f"Successfully installed {package}")
+                    
         except Exception as e2:
-            print (f"Failed to install {package}")
+            self.printf (f"Failed to install {package}")
             raise Exception('InstallPackage', f"Failed to install {package}")
 
         Package = getattr(importlib.import_module(module), name)
@@ -110,5 +121,5 @@ class CustomService(BaseService):
             else:
                 return "undefined"
         except Exception as e:
-                print(e)
+                print(e, flush=True)
                 return "undefined" 

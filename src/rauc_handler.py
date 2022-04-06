@@ -19,7 +19,7 @@ class RaucHandler():
                                                     'de.pengutronix.rauc.Installer',
                                                     None)
         except Exception as ex:
-            print("ups")
+            self.printf("ups")
 
     def get_slot_status(self):
         response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
@@ -28,7 +28,7 @@ class RaucHandler():
             
         result = json.loads(response.stdout)
         rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)["rootfs.0"]
-        print(rootfs0)
+        self.printf(rootfs0)
         rootfs1 = next(item for item in result["slots"] if "rootfs.1" in item)["rootfs.1"]
         slot_status = {
             "rootfs0": {
@@ -86,10 +86,10 @@ class RaucHandler():
                                       Gio.DBusCallFlags.NO_AUTO_START, 1000 * 60 * 10, None)
             self.reboot_after_install()
         except Exception as e:
-            print(f"Error in rauc_handler.install: {e}")
+            self.printf(f"Error in rauc_handler.install: {e}")
 
     def reboot_after_install(self, nb):
-        print("Received completed from RAUC interface")
+        self.printf("Received completed from RAUC interface")
         os.system("/sbin/reboot")
 
     def deep_get(self, dictionary, keys, default=None):

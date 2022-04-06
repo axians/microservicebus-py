@@ -16,12 +16,12 @@ class Logger(BaseService):
         await self.Debug(f"Received: {message}")
 
     async def _debug(self, message):
-       print(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
+       self.printf(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
     
     async def _error(self, message):
-       print(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
+       self.printf(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
 

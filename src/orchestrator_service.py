@@ -41,7 +41,7 @@ class Orchestrator(BaseService):
 | '_ ` _ \\| |/ __| '__/ _ \\___ \\ / _ \\ '__\\ \\ / / |/ __/ _ \\  _ \\| | | / __| 
 | | | | | | | (__| | | (_) |__) |  __/ |   \\ V /| | (_|  __/ |_) | |_| \\__ \\ 
 |_| |_| |_|_|\\___|_|  \\___/____/ \\___|_|    \\_/ |_|\\___\\___|____/ \\__,_|___/ \n\033[1mAXIANS IoT Operations - Python IoT agent\nfor more information visit https://microservicebus.com\n\033[0m"""
-        print(text)
+        self.printf(text)
         # endregion
 
         await self.Debug("Started")
@@ -90,15 +90,15 @@ class Orchestrator(BaseService):
             service for service in self.services if isinstance(service, CustomService)]
         await self.Debug(f"Running {len(self.services)} services")
 
-    def service_completed(x, fn):
-        print("*************************")
-        print(f"{fn.get_name()} stopped")
-        print("*************************")
+    def service_completed(self, fn):
+        self.printf("*************************")
+        self.printf(f"{fn.get_name()} stopped")
+        self.printf("*************************")
 
     async def shutdown(self, signal, loop, *args):
-        print()
-        print(f"Shutting down ...")
-        print(f"Running {len(self.services)} services")
+        self.printf("")
+        self.printf(f"Shutting down ...")
+        self.printf(f"Running {len(self.services)} services")
         self.run = False
         
         # Calling all services to shutdown
@@ -112,3 +112,4 @@ class Orchestrator(BaseService):
 
         await asyncio.gather(*tasks, return_exceptions=True)
         loop.stop()
+
