@@ -100,6 +100,7 @@ class microServiceBusHandler(BaseService):
     async def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
             self.printf("Node created successfully")
+            self.settings = settings
             self.save_settings(settings)
         
         await self.Debug("Signing in")
