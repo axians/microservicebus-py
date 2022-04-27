@@ -9,21 +9,22 @@ from gi.repository import Gio
 
 class RaucHandler():
     def __init__(self):
-        try:
-            self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-            self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus, Gio.DBusProxyFlags.NONE,None,'de.pengutronix.rauc','/','de.pengutronix.rauc.Installer',None)
-        except Exception as ex:
-            self.printf("ups")
+        self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        self.dbus_proxy = Gio.DBusProxy.new_sync(
+            self.bus, Gio.DBusProxyFlags.NONE, None, 'de.pengutronix.rauc', '/', 'de.pengutronix.rauc.Installer', None)
 
     def get_slot_status(self):
-        response = subprocess.run("rauc status --detailed --output-format=json", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+        response = subprocess.run("rauc status --detailed --output-format=json",
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
         if response.returncode != 0:
             return None
-            
+
         result = json.loads(response.stdout)
-        rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)["rootfs.0"]
+        rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)[
+            "rootfs.0"]
         self.printf(rootfs0)
-        rootfs1 = next(item for item in result["slots"] if "rootfs.1" in item)["rootfs.1"]
+        rootfs1 = next(item for item in result["slots"] if "rootfs.1" in item)[
+            "rootfs.1"]
         slot_status = {
             "rootfs0": {
                 "installed.count": self.deep_get(rootfs0, "slot_status.installed.count"),
@@ -74,14 +75,10 @@ class RaucHandler():
         return mark_result
 
     def install(self, path):
-        try:
-            self.dbus_proxy.Install('(s)',(path))
-            self.reboot_after_install()
-        except Exception as e:
-            self.printf(f"Error in rauc_handler.install: {e}")
+        self.dbus_proxy.Install('(s)', (path))
+        self.reboot_after_install()
 
     def reboot_after_install(self, nb):
-        self.printf("Received completed from RAUC interface")
         os.system("/sbin/reboot")
 
     def deep_get(self, dictionary, keys, default=None):
