@@ -11,13 +11,7 @@ class RaucHandler():
     def __init__(self):
         try:
             self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-            self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus,
-                                                    Gio.DBusProxyFlags.NONE,
-                                                    None,
-                                                    'de.pengutronix.rauc',
-                                                    '/',
-                                                    'de.pengutronix.rauc.Installer',
-                                                    None)
+            self.dbus_proxy = Gio.DBusProxy.new_sync(self.bus, Gio.DBusProxyFlags.NONE,None,'de.pengutronix.rauc','/','de.pengutronix.rauc.Installer',None)
         except Exception as ex:
             self.printf("ups")
 
@@ -76,14 +70,12 @@ class RaucHandler():
 
     def mark_partition(self, state, partition):
         mark_result = self.dbus_proxy.call_sync('Mark', GLib.Variant(
-            '(ss)', ("active", "rootfs.0")), Gio.DBusCallFlags.NO_AUTO_START, 500, None)
+            '(ss)', (state, partition)), Gio.DBusCallFlags.NO_AUTO_START, 500, None)
         return mark_result
 
     def install(self, path):
         try:
-            self.dbus_proxy.call_sync('Install',
-                                      GLib.Variant('(s)', (path)),
-                                      Gio.DBusCallFlags.NO_AUTO_START, 1000 * 60 * 10, None)
+            self.dbus_proxy.Install('(s)',(path))
             self.reboot_after_install()
         except Exception as e:
             self.printf(f"Error in rauc_handler.install: {e}")
