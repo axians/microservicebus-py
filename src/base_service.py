@@ -1,6 +1,5 @@
 import asyncio
 import subprocess
-import pip
 import importlib
 from queue_message import QueueMessage
 
@@ -86,7 +85,7 @@ class BaseService:
                 importlib.import_module(module)
             except Exception as e1:
                 self.printf (f"Unable to import module:. \nTrying to install package {package}")
-                #pip.main(['install', package])
+
                 response = subprocess.run(f"pip3 install {package}", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
                 if(response.returncode != 0):
                     self.printf (f"Failed to install {package}")

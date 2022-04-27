@@ -5,7 +5,12 @@ class AzureIoT(BaseService):
     def __init__(self, id, queue, provider_info):
         logger = logging.getLogger('azure.iot.device')
         logger.setLevel(logging.WARNING)
-        IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
+        
+        try:
+            IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
+        except Exception as e:
+            self.printf(f"Error installing azure-iot-device: {e}")
+
         self.device_client = IoTHubDeviceClient.create_from_connection_string(provider_info["connectionString"])
         self.device_client.on_method_request_received = self.method_request_handler
         self.device_client.on_twin_desired_properties_patch_received = self.twin_patch_handler
@@ -13,6 +18,10 @@ class AzureIoT(BaseService):
         super(AzureIoT, self).__init__(id, queue)
 
     async def Start(self):
+        if self.device_client == None:
+            await self.Debug("azure-iot-device is not installed")
+            return
+
         await self.device_client.connect()
         self.twin = await self.device_client.get_twin()
         await self.SubmitAction("*", "StateUpdate", self.twin)

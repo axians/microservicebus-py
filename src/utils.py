@@ -1,22 +1,4 @@
 import subprocess, sys, importlib, socket, array, struct, fcntl 
-import pip._internal as pip
-
-def install(package):
-    pip.main(['install', package])
-
-def uninstall(package):
-    pip.main(['uninstall', '-y', package])
-
-def install_module(module):
-    for package in module["packages"]:
-        try:            
-            importlib.import_module(package["name"])
-        except ImportError:
-            try:
-                pip.main(['install', package["package"]])
-                print(f'{package["package"]} has been installed..', flush=True)
-            except TypeError as err:
-                print(f'Handling run-time error:{err}', flush=True)
 
 def get_public_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
