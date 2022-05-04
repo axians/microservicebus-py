@@ -22,7 +22,6 @@ class RaucHandler():
         result = json.loads(response.stdout)
         rootfs0 = next(item for item in result["slots"] if "rootfs.0" in item)[
             "rootfs.0"]
-        self.printf(rootfs0)
         rootfs1 = next(item for item in result["slots"] if "rootfs.1" in item)[
             "rootfs.1"]
         slot_status = {
