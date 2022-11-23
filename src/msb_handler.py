@@ -319,8 +319,8 @@ class microServiceBusHandler(BaseService):
 
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
 
-        if sign_in_response['protocol'] == "AZUREIOT":
-            self.start_azure_iot_service(sign_in_response)
+        #if sign_in_response['protocol'] == "AZUREIOT":
+        #    self.start_azure_iot_service(sign_in_response)
 
         if os.path.isdir(self.service_path) == False:
             os.mkdir(self.service_path)
@@ -473,7 +473,7 @@ class microServiceBusHandler(BaseService):
         metamodel = response.json()
         if(force or version.parse(metamodel["version"]) > version.parse(current_version)):
             self.printf("New firmware version found")
-            dir = f"{self.msb_dir}/firmwareimages/"
+            dir = f"/tmp/firmwareimages/"
             # Check if directory exists
             if os.path.isdir(dir) == False:
                 os.mkdir(dir)
@@ -497,7 +497,7 @@ class microServiceBusHandler(BaseService):
         self.connection.send(
             "notify", [connid, f"Successfully marked partition.", "INFO"])
         time.sleep(10)
-        os.system("sudo /sbin/reboot")
+        os.system("/sbin/reboot")
 
     def set_interval(self, func, sec):
         def func_wrapper():

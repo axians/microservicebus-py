@@ -1,4 +1,5 @@
 import signal
+import time
 import os
 import subprocess
 import json
@@ -70,14 +71,15 @@ class RaucHandler():
 
     def mark_partition(self, state, partition):
         mark_result = self.dbus_proxy.call_sync('Mark', GLib.Variant(
-            '(ss)', (state, partition)), Gio.DBusCallFlags.NO_AUTO_START, 500, None)
+            '(ss)', (state, partition)), Gio.DBusCallFlags.NO_AUTO_START, 5000, None)
         return mark_result
 
     def install(self, path):
         self.dbus_proxy.Install('(s)', (path))
+        time.sleep(120)
         self.reboot_after_install()
 
-    def reboot_after_install(self, nb):
+    def reboot_after_install(self):
         os.system("/sbin/reboot")
 
     def deep_get(self, dictionary, keys, default=None):
