@@ -208,9 +208,8 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "ping", lambda conn_id: self.ping_response(conn_id[0]))
         self.connection.on("errorMessage", lambda arg: self.debug_sync(arg[0]))
-        self.connection.on("restart", lambda args: os.execv(
-            sys.executable, ['python'] + sys.argv))
-        self.connection.on("reboot", lambda args: os.system("/sbin/reboot"))
+        self.connection.on("restart", lambda args: self.restart())
+        self.connection.on("reboot", lambda args: self.reboot())
         self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("heartBeat", lambda messageList: self.printf(
             "Heartbeat received: " + " ".join(messageList)))
@@ -442,6 +441,16 @@ class microServiceBusHandler(BaseService):
         self.connection.send(
             'notify', [id, f"Node {node_name} has been reset", "INFO"])
         os.execv(sys.executable, ['python'] + sys.argv)
+    
+    def restart(self):
+        asyncio.run(self.Debug("\033[93mRestarting node\033[0m"))
+        time.sleep(1)
+        os.execv(sys.executable, ['python'] + sys.argv)
+
+    def reboot(self):
+        asyncio.run(self.Debug("\033[93mRebooting node\033[0m"))
+        time.sleep(1)
+        os.system("reboot")
 
     def update_firmware(self, force, connid):
         self.printf(force)
@@ -497,7 +506,7 @@ class microServiceBusHandler(BaseService):
         self.connection.send(
             "notify", [connid, f"Successfully marked partition.", "INFO"])
         time.sleep(10)
-        os.system("/sbin/reboot")
+        os.system("reboot")
 
     def set_interval(self, func, sec):
         def func_wrapper():

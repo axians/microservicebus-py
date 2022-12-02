@@ -80,7 +80,7 @@ class RaucHandler():
         self.reboot_after_install()
 
     def reboot_after_install(self):
-        os.system("/sbin/reboot")
+        os.system("reboot")
 
     def deep_get(self, dictionary, keys, default=None):
         return reduce(lambda d, key: d.get(key, default) if isinstance(d, dict) else default, keys.split("."), dictionary)
