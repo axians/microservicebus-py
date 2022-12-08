@@ -1,4 +1,3 @@
-from rauc_handler import RaucHandler
 from base_service import BaseService
 from pathlib import Path
 from signalrcore.hub_connection_builder import HubConnectionBuilder
@@ -39,16 +38,32 @@ class microServiceBusHandler(BaseService):
 
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
-        self.rauc_handler = RaucHandler()
+        try:
+            from rauc_handler import RaucHandler
+            self.rauc_handler = RaucHandler()
+        except Exception as e:
+            self.printf("")
+            self.printf(f"Unable to initiate RAUC. Proceeding without RAUC support.")
+
         super(microServiceBusHandler, self).__init__(id, queue)
     # endregion
     # region Base functions
 
     async def Start(self):
         try:
-            await self.set_up_signalr()
+            
             self.settings = self.get_settings()
+            
+            if "hubUri" in self.settings:
+                self.printf("hubUri exists")
+                self.base_uri = self.settings["hubUri"]
+            else:
+                self.printf("hubUri not set")
+                self.settings["hubUri"] = self.base_uri
 
+            await self.Debug(f"instance: {self.base_uri}")
+
+            await self.set_up_signalr()
             # If no sas key, try provision using mac address
             sas_exists = "sas" in self.settings
             if(sas_exists == False):
@@ -85,14 +100,17 @@ class microServiceBusHandler(BaseService):
         self.printf(self.msb_settings_path)
         if os.path.exists(self.msb_settings_path):
             self.printf("Settings exists")
+            
             with open(self.msb_settings_path) as f:
                 settings = json.load(f)
+
         else:
             self.printf("Creating settings")
             settings = {
                 "hubUri": self.base_uri
             }
             self.save_settings(settings)
+        
         return settings
 
     def save_settings(self, settings):
@@ -102,6 +120,7 @@ class microServiceBusHandler(BaseService):
     async def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
             self.printf("Node created successfully")
+            settings["hubUri"] = self.settings["hubUri"] 
             self.settings = settings
             self.save_settings(settings)
 
@@ -114,18 +133,17 @@ class microServiceBusHandler(BaseService):
             "id": "",
             "connectionId": "",
             "Name": settings["nodeName"],
-            "machineName": "",
+            "machineName": socket.gethostname(),
             "OrganizationID": settings["organizationId"],
             "npmVersion": "3.12.3",
             "sas": settings["sas"],
             "recoveredSignIn": "False",
-            # "ipAddresses": "",
             "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
         }
 
         # Use for debugging
-        self.connection.send("signIn", [hostData])
-        #self.connection.send("signInAsync", [hostData])
+        #self.connection.send("signIn", [hostData])
+        self.connection.send("signInAsync", [hostData])
 
     def sign_in_sync(self, settings, first_sign_in):
         asyncio.run(self.sign_in(settings, first_sign_in))
@@ -133,7 +151,19 @@ class microServiceBusHandler(BaseService):
     async def create_node(self):
         mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         await self.Debug(mac)
-        self.connection.send("createNodeFromMacAddress", [mac])
+        # self.connection.send("createNodeFromMacAddress", [mac])
+        request = {
+            "hostName" :socket.gethostname(),
+            "imei":None,
+            "ipAddress":"",
+            "macAddresses": mac,
+            "isModule":False
+        }
+        self.connection.send("assertNode", [request])
+        hurUri = self.settings["hubUri"]
+        await self.Debug("\033[93m Device information such as host name, MAC addresses and IP addresses\033[0m")
+        await self.Debug(f"\033[93m has been submitted to {hurUri} to pre-register the Node.\033[0m")
+        await self.Debug(f"\033[93m Please visit {hurUri} to claim this Node.\033[0m")
 
     def start_azure_iot_service(self, sign_in_response):
         try:
@@ -181,8 +211,10 @@ class microServiceBusHandler(BaseService):
     async def set_up_signalr(self):
         self.handler = logging.StreamHandler()
         self.handler.setLevel(logging.DEBUG)
+
         # Settings
         signalr_uri = f"{self.base_uri}/nodeHub"
+        await self.Debug(f"Connecting to {signalr_uri}")
         self.connection = HubConnectionBuilder()\
             .with_url(signalr_uri, options={"verify_ssl": False}) \
             .with_automatic_reconnect({
@@ -201,18 +233,14 @@ class microServiceBusHandler(BaseService):
             f"An exception was thrown closed{data.error}"))
 
         # mSB.com listeners
-        self.connection.on(
-            "nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
-        self.connection.on(
-            "signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
-        self.connection.on(
-            "ping", lambda conn_id: self.ping_response(conn_id[0]))
+        self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
+        self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
+        self.connection.on("ping", lambda conn_id: self.ping_response(conn_id[0]))
         self.connection.on("errorMessage", lambda arg: self.debug_sync(arg[0]))
         self.connection.on("restart", lambda args: self.restart())
         self.connection.on("reboot", lambda args: self.reboot())
         self.connection.on("reset", lambda args: self.reset(args[0]))
-        self.connection.on("heartBeat", lambda messageList: self.printf(
-            "Heartbeat received: " + " ".join(messageList)))
+        self.connection.on("heartBeat", lambda messageList: self.printf("Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
             firmware_response[0], firmware_response[1]))
@@ -220,10 +248,8 @@ class microServiceBusHandler(BaseService):
             boot_info[0], boot_info[1]))
         self.connection.on("getVpnSettingsResponse", lambda vpn_response: self.get_vpn_settings_response(
             vpn_response[0], vpn_response[1], vpn_response[2]))
-        self.connection.on(
-            "refreshVpnSettings", lambda response: self.refresh_vpn_settings_sync(response))
-        self.connection.on(
-            "sendMessage", lambda args: self.debug_sync(args[0]))
+        self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings_sync(response))
+        self.connection.on("sendMessage", lambda args: self.debug_sync(args[0]))
 
         # region Not implemented event handlers
         self.connection.on(
@@ -314,12 +340,13 @@ class microServiceBusHandler(BaseService):
         tag_list = sign_in_response["tags"]
 
         asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
+        
+        if self.settings["hubUri"] is not None:
+            sign_in_response["hubUri"] = self.settings["hubUri"]
+        
         self.save_settings(sign_in_response)
 
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
-
-        #if sign_in_response['protocol'] == "AZUREIOT":
-        #    self.start_azure_iot_service(sign_in_response)
 
         if os.path.isdir(self.service_path) == False:
             os.mkdir(self.service_path)
@@ -367,6 +394,8 @@ class microServiceBusHandler(BaseService):
                     asyncio.run(self.StartService(microService))
                     asyncio.run(self.Debug(f"Loading module {module_name}"))
 
+        settings = self.get_settings()
+        self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
         self.sendHeartbeat()
 
     def not_implemented(self, event_handler):
@@ -376,8 +405,7 @@ class microServiceBusHandler(BaseService):
     def ping_response(self, conn_id):
         self.printf("Ping response")
         settings = self.get_settings()
-        self.connection.send("pingResponse", [
-                             settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
+        self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
 
     def sendHeartbeat(self):
         self.connection.send("heartBeat", ["echo"])

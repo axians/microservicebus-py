@@ -1,19 +1,6 @@
 version: '3'
 
 services:
-
-  # Eclipse Mosquitto MQTT Broker
-  mosquitto:
-    build: .
-    environment:
-      - MOSQUITTO_USERNAME=msb
-      - MOSQUITTO_PASSWORD=msb
-    image: eclipse-mosquitto:2.0.12
-    container_name: eclipse-mosquitto
-    restart: always
-    volumes:
-      - ./config:/mosquitto/config:ro
-      - ./data:/mosquitto/data
-      - ./log:/mosquitto/log
-    ports:
-      - 1883:1883
+  python:
+    image: alpine:latest
+    entrypoint: /bin/sh
