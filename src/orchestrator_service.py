@@ -44,7 +44,7 @@ class Orchestrator(BaseService):
         self.printf(text)
         # endregion
 
-        await self.Debug("Started")
+        await self.Debug("Started Python Node agent for microServicebus.com")
 
         while self.run:
             msg = await self.queue.get()

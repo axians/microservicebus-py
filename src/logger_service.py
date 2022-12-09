@@ -10,6 +10,8 @@ class Logger(BaseService):
         await self.Debug("Started")
         while True:
             await asyncio.sleep(0.1)
+    async def msb_signed_in(self, args):
+        pass
     
     async def StateUpdate(self, message):
         state = message.message[0]

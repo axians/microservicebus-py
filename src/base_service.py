@@ -25,7 +25,12 @@ class BaseService:
 
     async def StateUpdate(self, state):
         pass
+    
+    async def SendEvent(self, message):
+        pass
 
+    async def msb_signed_in(self, args):
+        pass
     # endregion
 
     # region Communication functions

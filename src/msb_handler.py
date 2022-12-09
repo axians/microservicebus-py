@@ -47,7 +47,7 @@ class microServiceBusHandler(BaseService):
 
         super(microServiceBusHandler, self).__init__(id, queue)
     # endregion
-    # region Base functions
+    # region Base functions 
 
     async def Start(self):
         try:
@@ -61,7 +61,7 @@ class microServiceBusHandler(BaseService):
                 self.printf("hubUri not set")
                 self.settings["hubUri"] = self.base_uri
 
-            await self.Debug(f"instance: {self.base_uri}")
+            await self.Debug(f"mSB instance: {self.base_uri}")
 
             await self.set_up_signalr()
             # If no sas key, try provision using mac address
@@ -81,7 +81,8 @@ class microServiceBusHandler(BaseService):
             await self.ThrowError(traceback.format_exc())
 
     async def _debug(self, message):
-        pass
+        if "nodeName" in self.settings:
+            self.connection.send("logMessage", [ self.settings["nodeName"], message.message[0], self.settings["organizationId"]])
 
     # endregion
     # region Private methods
@@ -227,7 +228,7 @@ class microServiceBusHandler(BaseService):
         self.connection.serverTimeoutInMilliseconds = 1000 * 60 * 6
         # Default listeners
         self.connection.on_open(lambda: self.debug_sync(
-            "connection opened and handshake received ready to send messages"))
+            "Connection opened and handshake received ready to send messages"))
         self.connection.on_close(lambda: self.debug_sync("connection closed"))
         self.connection.on_error(lambda data: self.debug_sync(
             f"An exception was thrown closed{data.error}"))
@@ -334,7 +335,6 @@ class microServiceBusHandler(BaseService):
         self.set_interval(self.sendHeartbeat, 60 * 3)
     # endregion
     # region SignalR callback functions
-
     def successful_sign_in(self, sign_in_response):
         node_name = sign_in_response["nodeName"]
         tag_list = sign_in_response["tags"]
@@ -403,9 +403,9 @@ class microServiceBusHandler(BaseService):
             f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
 
     def ping_response(self, conn_id):
-        self.printf("Ping response")
         settings = self.get_settings()
         self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
+        asyncio.run(self.Debug("[Ping response"))
 
     def sendHeartbeat(self):
         self.connection.send("heartBeat", ["echo"])
@@ -556,4 +556,9 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.SubmitAction(
             "vpnhelper", "get_vpn_settings_response", message))
 
+    # endregion
+    # region Service callbacks
+    async def request_connectionstring(self, message):
+        action = message.message[0]["action"]     
+        await self.SubmitAction(message.source, action, self.settings["receiveConnectionString"])
     # endregion
