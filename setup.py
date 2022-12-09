@@ -24,7 +24,7 @@ if os.path.isfile(requirementPath):
 # This call to setup() does all the work
 setup(
     name="microservicebus-py",
-    version="0.1.1",
+    version="0.1.2",
     description="Python agent for microServiceBus.com. Please visit https://microservicebus.com for more information.",
     long_description=README,
     long_description_content_type="text/markdown",

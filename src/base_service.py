@@ -1,3 +1,5 @@
+import os
+import json
 import asyncio
 import subprocess
 import importlib
@@ -9,6 +11,8 @@ class BaseService:
         self.id = id
         self.queue = queue
         self.task = None
+        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        self.msb_settings_path = f"{self.msb_dir}/settings.json"
 
     def printf(self, msg):
         print(msg, flush=True)
@@ -26,8 +30,31 @@ class BaseService:
     async def StateUpdate(self, state):
         pass
     
-    async def SendEvent(self, message):
+    async def _send_event(self, message):
         pass
+
+    async def _change_state(self, message):
+        pass
+
+
+    def get_settings(self):
+        # Check if directory exists
+        if os.path.isdir(self.msb_dir) == False:
+            os.mkdir(self.msb_dir)
+
+        # Load settings file if exists
+        if os.path.exists(self.msb_settings_path):
+            with open(self.msb_settings_path) as f:
+                settings = json.load(f)
+
+        else:
+            self.printf("Creating settings")
+            settings = {
+                "hubUri": self.base_uri
+            }
+            self.save_settings(settings)
+        
+        return settings
 
     async def msb_signed_in(self, args):
         pass
