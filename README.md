@@ -10,9 +10,9 @@ You can also use `self.Debug` if you want the logging transmitted to msb.com.
 
 ## BaseService (base_service)
 
-All services inherit from _BaseService_ either directly or through _CustomService_. Inheriting from _BaseService_ provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also call `self.SubmitAction(destination, action, message)` to more flexibility is needed.
+All services inherit from _BaseService_ either directly or through _CustomService_. Inheriting from _BaseService_ provides a number of functions such as `self.Debug(text)` and `self.SubmitMessage(message)`. Such methods are predefined to target specific destinations and functions. A service can also call `self.SubmitAction(destination, action, message)` when more flexibility is needed.
 
-For instance, if you had a custom service called `emailhandler` which would send emails through the _Process_ function and you'd like to send a message to it you would write:
+For instance, if you had a custom service called `emailhandler` which would send emails through the _Process_ function you could use the following code:
 
 ```python
 message = {'to':'foo@bar.com', 'subject':'Hello', 'body':'...from foo'}
@@ -49,23 +49,6 @@ As the name implies the _microServiceBusHandler_ is responsible for all communic
 ### Logger (logger_service)
 
 The Logger service outputs data to the terminal and forward debugging info to _microServiceBusHandler_ if enabled
-
-### Com (downloaded at startup) (Currently not used)
-
-The _Com_ service is responsible for all communication with the IoT Hub provider. The only implementation as for now is the _AzureIoT_ service.
-
-The _Com_ service is also responsible to handle state changes. These is expected to be a `msb-state` in the desired state:
-
-```json
-"msb-state": {
-    "enabled": true,
-    "debug": false
-},
-```
-
-If any of the elements in the `msb-state` changes, the _Com_ service is responsible for taking actions, such as stopping and starting custom services. State changes will also get forwarded to all other services.
-
-_Com_ does not have any inbound functions and can not be stopped.
 
 ## Custom services
 

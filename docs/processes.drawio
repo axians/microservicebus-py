@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="HT734gjVTnM0i2hRpuOC" name="Basics">
-        <mxGraphModel dx="959" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="932" dy="671" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="vwfZ6YdCIUUza9WTST1x-0"/>
                 <mxCell id="vwfZ6YdCIUUza9WTST1x-1" parent="vwfZ6YdCIUUza9WTST1x-0"/>
@@ -134,7 +134,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="NwyFhuL-EIjybWBtbaD6" name="msbService">
-        <mxGraphModel dx="959" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="932" dy="671" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -253,7 +253,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="IK3WQ97-SoqUca3cu_iy" name="VPN">
-        <mxGraphModel dx="959" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="497" dy="671" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="E8dM8oLI9wQaOzk2eXtM-0"/>
                 <mxCell id="E8dM8oLI9wQaOzk2eXtM-1" parent="E8dM8oLI9wQaOzk2eXtM-0"/>

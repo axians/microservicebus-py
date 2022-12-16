@@ -28,6 +28,9 @@ class microServiceBusHandler(BaseService):
     # region Constructor
     def __init__(self, id, queue):
         self.ready = False
+        self._connected = False
+        self._reconnect = False
+        self._missedheartbeat = 0
         self.base_uri = "https://microservicebus.com"
         home = str(Path.home())
         self.msb_dir = f"{os.environ['HOME']}/msb-py"
@@ -220,10 +223,10 @@ class microServiceBusHandler(BaseService):
         self.connection.keepAliveIntervalInMilliseconds = 1000 * 60 * 3
         self.connection.serverTimeoutInMilliseconds = 1000 * 60 * 6
         # Default listeners
-        self.connection.on_open(lambda: self.debug_sync("connection opened and handshake received ready to send messages"))
-        self.connection.on_close(lambda: self.debug_sync("connection closed"))
+        self.connection.on_open(lambda: self.connected())
+        self.connection.on_close(lambda: self.disconnected())
         self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown closed{data.error}"))
-        
+        self.connection.on_reconnect(lambda data: self.reconneced_sync())
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
@@ -397,6 +400,20 @@ class microServiceBusHandler(BaseService):
         settings = self.get_settings()
         self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
         asyncio.run(self.Debug("Ping response"))
+    
+    def connected(self):
+        self.debug_sync("Connection opened and handshake received ready to send messages")
+        self._connected = True
+
+        if(self._reconnect is True):
+            self.debug_sync("Reconnecting")
+            self.connection.send("reconnected", [self.settings["id"]])
+
+    def disconnected(self):
+        self.debug_sync("Connection closed")
+        self._connected = False
+        self._reconnect = True
+
     def sendHeartbeat(self):
         self.connection.send("heartBeat", ["echo"])
 
