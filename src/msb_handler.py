@@ -226,7 +226,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on_open(lambda: self.connected())
         self.connection.on_close(lambda: self.disconnected())
         self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown closed{data.error}"))
-        self.connection.on_reconnect(lambda data: self.reconneced_sync())
+   
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
