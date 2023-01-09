@@ -17,6 +17,9 @@ class Logger(BaseService):
         state = message.message[0]
         await self.Debug(f"Received: {message}")
 
+    async def _change_debug(self, message):
+        self.debug = message.message[0]
+ 
     async def _debug(self, message):
        self.printf(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
        if self.debug:

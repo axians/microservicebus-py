@@ -6,7 +6,7 @@ from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
 from vpn_helper import VPNHelper
-
+from terminal_service import Terminal
 
 class Orchestrator(BaseService):
     def __init__(self, id, queue):
@@ -33,6 +33,8 @@ class Orchestrator(BaseService):
         await self.StartService(msbHandler)
         vpnHelper = VPNHelper("vpnhelper", self.queue)
         await self.StartService(vpnHelper)
+        terminal = Terminal("terminal", self.queue)
+        await self.StartService(terminal)
 
         # region
         text = """\033[92m
@@ -47,24 +49,27 @@ class Orchestrator(BaseService):
         await self.Debug("Started Python Node agent for microServicebus.com")
 
         while self.run:
-            msg = await self.queue.get()
+            try:
+                msg = await self.queue.get()
 
-            if msg.destination == "*":  # Send to all services
-                for service in self.services:
-                    try:
+                if msg.destination == "*":  # Send to all services
+                    for service in self.services:
+                        try:
+                            function = getattr(service, msg.action)
+                            self.loop.create_task(function(msg))
+                        except:
+                            await self.Debug(f"{service.id} has no function called {msg.action}")
+                else:  # Send to one service
+                    service = next(
+                        (srv for srv in self.services if srv.id == msg.destination), None)
+                    if service != None:
                         function = getattr(service, msg.action)
                         self.loop.create_task(function(msg))
-                    except:
-                        await self.Debug(f"{service.id} has no function called {msg.action}")
-            else:  # Send to one service
-                service = next(
-                    (srv for srv in self.services if srv.id == msg.destination), None)
-                if service != None:
-                    function = getattr(service, msg.action)
-                    self.loop.create_task(function(msg))
-                else:
-                    await self.Debug(f"There is no service called {msg.destination}")
-
+                    else:
+                        await self.Debug(f"There is no service called {msg.destination}")
+            except Exception as tex:
+                self.printf(tex)
+                
             await asyncio.sleep(0.1)
 
     async def _start_service(self, message):

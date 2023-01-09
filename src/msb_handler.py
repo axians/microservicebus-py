@@ -236,6 +236,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("reboot", lambda args: self.reboot())
         self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("changeState", lambda args: self.change_state(args[0]))
+        self.connection.on("changeDebug", lambda args: self.change_debug(args[0]))
         self.connection.on("heartBeat", lambda messageList: self.printf("Heartbeat received: " + " ".join(messageList)))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
@@ -246,6 +247,9 @@ class microServiceBusHandler(BaseService):
             vpn_response[0], vpn_response[1], vpn_response[2]))
         self.connection.on("refreshVpnSettings", lambda response: self.refresh_vpn_settings_sync(response))
         self.connection.on("sendMessage", lambda args: self.debug_sync(args[0]))
+        self.connection.on("startTerminal", lambda args: self.start_terminal(args[0], args[1]))
+        self.connection.on("stopTerminal", lambda args: self.stop_terminal())
+        self.connection.on("terminalCommand", lambda args: self.terminal_command(args[0]))
 
         # region Not implemented event handlers
         self.connection.on(
@@ -255,10 +259,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "changeState", lambda response: self.not_implemented("changeState"))
         self.connection.on(
-            "changeDebug", lambda response: self.not_implemented("changeDebug"))
-        self.connection.on(
             "changeTracking", lambda response: self.not_implemented("changeTracking"))
-        #self.connection.on("sendMessage", lambda response: self.not_implemented("sendMessage"))
         self.connection.on(
             "forceUpdate", lambda response: self.not_implemented("forceUpdate"))
         self.connection.on(
@@ -313,12 +314,12 @@ class microServiceBusHandler(BaseService):
             "dockerComposeUp", lambda response: self.not_implemented("dockerComposeUp"))
         self.connection.on(
             "dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
-        self.connection.on(
-            "startTerminal", lambda response: self.not_implemented("startTerminal"))
-        self.connection.on(
-            "stopTerminal", lambda response: self.not_implemented("stopTerminal"))
-        self.connection.on(
-            "terminalCommand", lambda response: self.not_implemented("terminalCommand"))
+        # self.connection.on(
+        #     "startTerminal", lambda response: self.not_implemented("startTerminal"))
+        # self.connection.on(
+        #     "stopTerminal", lambda response: self.not_implemented("stopTerminal"))
+        # self.connection.on(
+        #     "terminalCommand", lambda response: self.not_implemented("terminalCommand"))
         self.connection.on(
             "downloadFile", lambda response: self.not_implemented("downloadFile"))
         self.connection.on(
@@ -348,7 +349,7 @@ class microServiceBusHandler(BaseService):
         if sign_in_response['itineraries'] is not None:
             for itinerary in sign_in_response['itineraries']:
                 pythonActivities = [srv for srv in itinerary["activities"]
-                                    if srv["userData"]["baseType"] == 'pythonfile']
+                                    if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']
                 for pythonActivity in pythonActivities:
 
                     host_config = [srv for srv in pythonActivity["userData"]
@@ -424,6 +425,27 @@ class microServiceBusHandler(BaseService):
             'notify', [id, f'Fetching environment state from {node_name}', 'INFO'])
 
         networks = []
+        ##xxx = psutil.net_if_stats()
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    ni = {
+                        "name": interface,
+                        "ip_address":snic.address,
+                        "mac_address": utils.getHwAddr(interface),
+                        "netmask": snic.netmask,
+                        "type": ''
+                    }
+                    networks.append(ni)
+                else:
+                    self.printf("ignore")
+                    
+                    
+                    # if any(x["name"] == interface for x in networks) == False:
+                    #     networks.append(ni)
+                        
+        ##yyy = psutil.net_if_addrs().items()
+
         # interfaces = netifaces.interfaces()
         # for interface in interfaces:
         #     addrs = netifaces.ifaddresses(interface)
@@ -439,7 +461,11 @@ class microServiceBusHandler(BaseService):
         if_addrs = psutil.net_if_addrs()
         cpu_times = psutil.cpu_times()
         disk_info = psutil.disk_usage('/')
-        slot_status = self.rauc_handler.get_slot_status()
+        slot_status = None
+        try:
+            slot_status = self.rauc_handler.get_slot_status()
+        except Exception:
+            pass
         state = {
             "networks": networks,
             "memory": {
@@ -491,6 +517,12 @@ class microServiceBusHandler(BaseService):
         self.settings["state"] = args
         self.save_settings(self.settings)
         asyncio.run(self.SubmitAction("*", "_change_state", args))
+
+    def change_debug(self, enableDebug):
+        self.debug_sync(f"Console debug {'enabled' if enableDebug else 'disabled'}")
+        self.settings["debug"] = enableDebug
+        self.save_settings(self.settings)
+        asyncio.run(self.SubmitAction("logger", "_change_debug", enableDebug))
 
     def update_firmware(self, force, connid):
         self.printf(force)
@@ -566,10 +598,29 @@ class microServiceBusHandler(BaseService):
                    'vpnConfigPath': f"{self.msb_dir}/{interfaceName}.conf"}
 
         asyncio.run(self.SubmitAction("vpnhelper", "get_vpn_settings_response", message))
+    
+    def start_terminal(self, connectionId, user):
+        message = {
+            'connectionId': connectionId,
+            'user': user
+        }
+        asyncio.run(self.SubmitAction("terminal", "_connect", message))
+    
+    def stop_terminal(self):
+       asyncio.run(self.SubmitAction("terminal", "_disconnect", {}))
+    
+    def terminal_command(self, args):
+        asyncio.run(self.SubmitAction("terminal", "_forward_command", args[0]))
+
     # endregion
     # region Service callbacks
     async def request_connectionstring(self, message):
         action = message.message[0]["action"]     
         await self.SubmitAction(message.source, action, self.settings["receiveConnectionString"])
+    async def terminal_output(self, message):
+        connectionId = message.message[0]["connectionId"]
+        data = message.message[0]["data"]    
+        self.connection.send("terminalData", [data, connectionId])
+    
     # endregion
     
