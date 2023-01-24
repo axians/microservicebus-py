@@ -73,13 +73,16 @@ class Orchestrator(BaseService):
             await asyncio.sleep(0.1)
 
     async def _start_service(self, message):
-        service = message.message[0]
-        self.services.append(service)
-        task = self.loop.create_task(service.Start())
-        service.task = task
-        task.set_name(f"{task.get_name()} : {service.id}")
-        task.add_done_callback(self.service_completed)
-        await self.Debug(f"Running {len(self.services)} services")
+        try:
+            service = message.message[0]
+            self.services.append(service)
+            task = self.loop.create_task(service.Start())
+            service.task = task
+            task.set_name(f"{task.get_name()} : {service.id}")
+            task.add_done_callback(self.service_completed)
+            await self.Debug(f"Running {len(self.services)} services")
+        except Exception as ex:
+                self.printf(ex)
 
     async def _stop_custom_services(self, message):
         # First stop all custom services

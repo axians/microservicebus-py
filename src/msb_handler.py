@@ -351,43 +351,49 @@ class microServiceBusHandler(BaseService):
                 pythonActivities = [srv for srv in itinerary["activities"]
                                     if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']
                 for pythonActivity in pythonActivities:
+                    try:
+                        host_config = [srv for srv in pythonActivity["userData"]
+                                    ["config"]["generalConfig"] if srv["id"] == 'host']
 
-                    host_config = [srv for srv in pythonActivity["userData"]
-                                   ["config"]["generalConfig"] if srv["id"] == 'host']
+                        # Check if activity is set to run on node
+                        if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
+                            continue
 
-                    # Check if activity is set to run on node
-                    if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
-                        continue
+                        organization_id = sign_in_response["organizationId"]
+                        file_name = pythonActivity["userData"]["type"].replace(
+                            "_py", ".py")
 
-                    organization_id = sign_in_response["organizationId"]
-                    file_name = pythonActivity["userData"]["type"].replace(
-                        "_py", ".py")
+                        uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
+                            "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
 
-                    uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
-                        "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
+                        service_file = requests.get(uri, allow_redirects=True)
+                        service_file_name = os.path.join(
+                            self.service_path, file_name)
 
-                    service_file = requests.get(uri, allow_redirects=True)
-                    service_file_name = os.path.join(
-                        self.service_path, file_name)
+                        file = open(service_file_name, 'wb+')
+                        file.write(service_file.content)
+                        file.close()
 
-                    file = open(service_file_name, 'wb+')
-                    file.write(service_file.content)
-                    file.close()
+                        module_name = pythonActivity["userData"]["type"].replace(
+                            "_py", "")
+                        service_name = pythonActivity["userData"]["type"]
+                        service_config = pythonActivity["userData"]["config"]
 
-                    module_name = pythonActivity["userData"]["type"].replace(
-                        "_py", "")
-                    service_name = pythonActivity["userData"]["type"]
-                    service_config = pythonActivity["userData"]["config"]
+                        try:
+                            spec = importlib.util.spec_from_file_location(
+                                module_name, service_file_name)
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            MicroService = getattr(module, module_name)
+                            microService = MicroService(service_name.lower(
+                            ), self.queue, service_config)  # (id, queue, config)
+                            asyncio.run(self.StartService(microService))
+                            asyncio.run(self.Debug(f"Loading module {module_name}"))
+                        except Exception as loadEx:
+                            print(f"Unable to load {module_name}service: Error: {loadEx}")
 
-                    spec = importlib.util.spec_from_file_location(
-                        module_name, service_file_name)
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    MicroService = getattr(module, module_name)
-                    microService = MicroService(service_name.lower(
-                    ), self.queue, service_config)  # (id, queue, config)
-                    asyncio.run(self.StartService(microService))
-                    asyncio.run(self.Debug(f"Loading module {module_name}"))
+                    except Exception as ex:
+                        print("Unable to start service")
 
         settings = self.get_settings()
         self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
