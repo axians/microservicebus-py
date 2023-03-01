@@ -55,7 +55,6 @@ class microServiceBusHandler(BaseService):
             self.settings = self.get_settings()
             
             if "hubUri" in self.settings:
-                self.printf("hubUri exists")
                 self.base_uri = self.settings["hubUri"]
             else:
                 self.printf("hubUri not set")
@@ -81,7 +80,7 @@ class microServiceBusHandler(BaseService):
             await self.ThrowError(traceback.format_exc())
 
     async def _debug(self, message):
-        if "nodeName" in self.settings:
+        if "nodeName" in self.settings and self._connected == True:
             self.connection.send("logMessage", [ self.settings["nodeName"], message.message[0], self.settings["organizationId"]])
 
     # endregion
@@ -215,9 +214,12 @@ class microServiceBusHandler(BaseService):
         self.connection = HubConnectionBuilder()\
             .with_url(signalr_uri, options={"verify_ssl": False}) \
             .with_automatic_reconnect({
-                "type": "interval",
-                "keep_alive_interval": 10,
-                "intervals": [1, 3, 5, 6, 7, 87, 3]
+                "type": "raw", # "raw" means it will continue to call the hub
+                "enable_trace": False,
+                "keep_alive_interval": 15,
+                "reconnect_interval": 2000, # The interval does not seam to to have any affect 
+                #"intervals": [2000,5000,10000,15000]
+                #"intervals": [2,5,5,5,5,5,5,5,10,10,30,30,60,60,120,120,1200,1200,1200,2400,2400]
             }).build()
 
         self.connection.keepAliveIntervalInMilliseconds = 1000 * 60 * 3
@@ -226,10 +228,12 @@ class microServiceBusHandler(BaseService):
         self.connection.on_open(lambda: self.connected())
         self.connection.on_close(lambda: self.disconnected())
         self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown closed{data.error}"))
-   
+        self.connection.on_reconnect(lambda: self.debug_sync(f"Reconnected to {self.base_uri}"))
+
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
+        self.connection.on("updatedToken", lambda args: self.update_token(args[0]))
         self.connection.on("ping", lambda conn_id: self.ping_response(conn_id[0]))
         self.connection.on("errorMessage", lambda arg: self.debug_sync(arg[0]))
         self.connection.on("restart", lambda args: self.restart())
@@ -314,12 +318,6 @@ class microServiceBusHandler(BaseService):
             "dockerComposeUp", lambda response: self.not_implemented("dockerComposeUp"))
         self.connection.on(
             "dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
-        # self.connection.on(
-        #     "startTerminal", lambda response: self.not_implemented("startTerminal"))
-        # self.connection.on(
-        #     "stopTerminal", lambda response: self.not_implemented("stopTerminal"))
-        # self.connection.on(
-        #     "terminalCommand", lambda response: self.not_implemented("terminalCommand"))
         self.connection.on(
             "downloadFile", lambda response: self.not_implemented("downloadFile"))
         self.connection.on(
@@ -340,6 +338,7 @@ class microServiceBusHandler(BaseService):
         if "hubUri" not in self.settings:
             sign_in_response["hubUri"] = self.settings["hubUri"]
         
+        sign_in_response["hubUri"] = self.base_uri
         self.save_settings(sign_in_response)
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
         
@@ -399,6 +398,12 @@ class microServiceBusHandler(BaseService):
         self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
         self.sendHeartbeat()
 
+    def update_token(self, token):
+        self.settings["sas"] = token
+        self.save_settings(self.settings)
+        self.debug_sync(f"SAS token has been updated. Restarting")
+        self.restart()
+
     def not_implemented(self, event_handler):
         asyncio.run(self.ThrowError(
             f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
@@ -413,7 +418,10 @@ class microServiceBusHandler(BaseService):
         self._connected = True
 
         if(self._reconnect is True):
-            self.debug_sync("Reconnecting")
+            id = self.settings["id"]
+            # self.debug_sync(f"Waiting to reconnect")
+            # time.sleep(10)
+            self.debug_sync(f"Reconnecting: {id}")
             self.connection.send("reconnected", [self.settings["id"]])
 
     def disconnected(self):
