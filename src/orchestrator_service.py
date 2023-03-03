@@ -84,8 +84,23 @@ class Orchestrator(BaseService):
         except Exception as ex:
                 self.printf(ex)
 
+    async def _start_custom_services(self, message):
+        await self.Debug(f"Starting custom services")
+        customServices = [
+            service for service in self.services if isinstance(service, CustomService)]
+
+        for srv in customServices:
+            srv.task.cancel()
+            
+        [await service.Start() for service in customServices]
+        # [self.services.remove(service) for service in customServices]
+        # customServices = [
+        #     service for service in self.services if isinstance(service, CustomService)]
+        
+        await self.Debug(f"Running {len(self.services)} services")
+    
     async def _stop_custom_services(self, message):
-        # First stop all custom services
+        await self.Debug(f"Stopping custom services")
         customServices = [
             service for service in self.services if isinstance(service, CustomService)]
 
@@ -93,10 +108,11 @@ class Orchestrator(BaseService):
             srv.task.cancel()
             
         [await service.Stop() for service in customServices]
-        [self.services.remove(service) for service in customServices]
-        customServices = [
-            service for service in self.services if isinstance(service, CustomService)]
-        await self.Debug(f"Running {len(self.services)} services")
+        # [self.services.remove(service) for service in customServices]
+        # customServices = [
+        #     service for service in self.services if isinstance(service, CustomService)]
+        
+        await self.Debug(f"Running {len(self.services)-len(customServices)} services")
 
     def service_completed(self, fn):
         self.printf("*************************")

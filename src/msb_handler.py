@@ -261,8 +261,6 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "updateItinerary", lambda response: self.not_implemented("updateItinerary"))
         self.connection.on(
-            "changeState", lambda response: self.not_implemented("changeState"))
-        self.connection.on(
             "changeTracking", lambda response: self.not_implemented("changeTracking"))
         self.connection.on(
             "forceUpdate", lambda response: self.not_implemented("forceUpdate"))
@@ -365,7 +363,7 @@ class microServiceBusHandler(BaseService):
                         uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
                             "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
 
-                        service_file = requests.get(uri, allow_redirects=True)
+                        service_file = requests.get(uri, allow_redirects=True, verify=False)
                         service_file_name = os.path.join(
                             self.service_path, file_name)
 
@@ -384,11 +382,13 @@ class microServiceBusHandler(BaseService):
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
                             MicroService = getattr(module, module_name)
+                            
                             microService = MicroService(service_name.lower(
                             ), self.queue, service_config)  # (id, queue, config)
                             asyncio.run(self.StartService(microService))
                             asyncio.run(self.Debug(f"Loading module {module_name}"))
                         except Exception as loadEx:
+                            asyncio.run(self.Debug(f"Unable to load {module_name}service: Error: {loadEx}"))
                             print(f"Unable to load {module_name}service: Error: {loadEx}")
 
                     except Exception as ex:
@@ -528,9 +528,13 @@ class microServiceBusHandler(BaseService):
         os.system("reboot")
 
     def change_state(self, args):
+        asyncio.run(self.Debug(f"Change state to {args}"))
         self.settings["state"] = args
         self.save_settings(self.settings)
-        asyncio.run(self.SubmitAction("*", "_change_state", args))
+        if args == "InActive":
+            asyncio.run(self.SubmitAction("orchestrator", "_stop_custom_services", args))
+        else:
+            asyncio.run(self.SubmitAction("orchestrator", "_start_custom_services", args))
 
     def change_debug(self, enableDebug):
         self.debug_sync(f"Console debug {'enabled' if enableDebug else 'disabled'}")
