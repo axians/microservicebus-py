@@ -1,5 +1,7 @@
+import os
+import json
 import asyncio
-import pip
+import subprocess
 import importlib
 from queue_message import QueueMessage
 
@@ -9,7 +11,12 @@ class BaseService:
         self.id = id
         self.queue = queue
         self.task = None
+        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        self.msb_settings_path = f"{self.msb_dir}/settings.json"
 
+    def printf(self, msg):
+        print(msg, flush=True)
+        
     # region Default functions
     async def Start(self):
         pass
@@ -22,7 +29,35 @@ class BaseService:
 
     async def StateUpdate(self, state):
         pass
+    
+    async def _send_event(self, message):
+        pass
 
+    async def _change_state(self, message):
+        pass
+
+
+    def get_settings(self):
+        # Check if directory exists
+        if os.path.isdir(self.msb_dir) == False:
+            os.mkdir(self.msb_dir)
+
+        # Load settings file if exists
+        if os.path.exists(self.msb_settings_path):
+            with open(self.msb_settings_path) as f:
+                settings = json.load(f)
+
+        else:
+            self.printf("Creating settings")
+            settings = {
+                "hubUri": self.base_uri
+            }
+            self.save_settings(settings)
+        
+        return settings
+
+    async def msb_signed_in(self, args):
+        pass
     # endregion
 
     # region Communication functions
@@ -72,16 +107,27 @@ class BaseService:
     # IoTHubDeviceClient = self.AddPipPackage("azure-iot-device", "azure.iot.device.aio", "IoTHubDeviceClient")
     # MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client")
 
+    # Think of it this way.... MqttClient = self.AddPipPackage("paho-mqtt", "paho.mqtt.client", "Client") ...is equivalent to:
+    # pip install paho-mqtt
+    # from paho.mqtt.client import Client
     def AddPipPackage(self, package, module, name):
         try:
             try:
+                self.printf(f"Importing {module}")
                 importlib.import_module(module)
             except Exception as e1:
-                print (e1)
-                pip.main(['install', package])
+                self.printf (f"Unable to import module:. \nTrying to install package {package}")
+
+                response = subprocess.run(f"pip3 install {package}", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+                if(response.returncode != 0):
+                    self.printf (f"Failed to install {package}")
+                    raise Exception('InstallPackage', f"Failed to install {package}")
+                else:
+                     self.printf (f"Successfully installed {package}")
+                    
         except Exception as e2:
-            print(e2)
-            importlib.import_module(module)
+            self.printf (f"Failed to install {package}")
+            raise Exception('InstallPackage', f"Failed to install {package}")
 
         Package = getattr(importlib.import_module(module), name)
         return Package
@@ -106,5 +152,5 @@ class CustomService(BaseService):
             else:
                 return "undefined"
         except Exception as e:
-                print(e)
+                print(e, flush=True)
                 return "undefined" 

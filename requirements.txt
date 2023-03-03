@@ -1,5 +1,5 @@
-asyncio
-signalrcore
-packaging
-pydbus
-psutil
+asyncio == 3.4.3
+signalrcore == 0.9.4
+packaging == 20.3
+psutil == 5.7.0
+PyGObject == 3.36.1

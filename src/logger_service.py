@@ -10,22 +10,23 @@ class Logger(BaseService):
         await self.Debug("Started")
         while True:
             await asyncio.sleep(0.1)
+    async def msb_signed_in(self, args):
+        pass
     
     async def StateUpdate(self, message):
         state = message.message[0]
-        state_exists = "msb-state" in state["desired"]
-        if state_exists:
-            if self.debug != state["desired"]["msb-state"]["debug"]:
-                self.debug = state["desired"]["msb-state"]["debug"]
-                await self.Debug(f"Console debugging is set to {self.debug}")
+        await self.Debug(f"Received: {message}")
 
+    async def _change_debug(self, message):
+        self.debug = message.message[0]
+ 
     async def _debug(self, message):
-       print(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
+       self.printf(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
     
     async def _error(self, message):
-       print(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
+       self.printf(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
 
