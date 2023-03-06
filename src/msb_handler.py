@@ -401,8 +401,8 @@ class microServiceBusHandler(BaseService):
     def update_token(self, token):
         self.settings["sas"] = token
         self.save_settings(self.settings)
-        self.debug_sync(f"SAS token has been updated. Restarting")
-        self.restart()
+        self.debug_sync(f"SAS token has been updated.")
+        #self.restart()
 
     def not_implemented(self, event_handler):
         asyncio.run(self.ThrowError(
