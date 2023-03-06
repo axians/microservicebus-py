@@ -136,13 +136,13 @@ class BaseService:
 
 
 class CustomService(BaseService):
-     def __init__(self, id, queue, config):
+    def __init__(self, id, queue, config):
         self.id = id
         self.queue = queue
         self.config = config
         super(CustomService, self).__init__(id, queue)
        
-     def GetPropertyValue(self, category, prop):
+    def GetPropertyValue(self, category, prop):
          ## newDict = dict(filter(lambda elem: elem[0] % 2 == 0, dictOfNames.items()))
         try:
             category = category + "Config"
@@ -153,4 +153,12 @@ class CustomService(BaseService):
                 return "undefined"
         except Exception as e:
                 print(e, flush=True)
-                return "undefined" 
+                return "undefined"
+        
+    def GetState(self):
+        try:
+            state = self.GetPropertyValue("general","enabled")
+            return state
+        except Exception as e:
+                print(e, flush=True)
+                return "undefined"

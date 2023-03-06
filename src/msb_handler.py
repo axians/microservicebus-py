@@ -2,7 +2,6 @@ from base_service import BaseService
 from pathlib import Path
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from packaging import version
-import time
 import asyncio
 import importlib
 import uuid
@@ -343,6 +342,10 @@ class microServiceBusHandler(BaseService):
         if os.path.isdir(self.service_path) == False:
             os.mkdir(self.service_path)
 
+        state = self.settings["state"]
+        asyncio.run(self.Debug(f"Node state {state}"))
+        asyncio.run(self.SubmitAction("orchestrator", "_set_state", {"state": state}))
+
         if sign_in_response['itineraries'] is not None:
             for itinerary in sign_in_response['itineraries']:
                 pythonActivities = [srv for srv in itinerary["activities"]
@@ -383,8 +386,7 @@ class microServiceBusHandler(BaseService):
                             spec.loader.exec_module(module)
                             MicroService = getattr(module, module_name)
                             
-                            microService = MicroService(service_name.lower(
-                            ), self.queue, service_config)  # (id, queue, config)
+                            microService = MicroService(service_name.lower(), self.queue, service_config)  # (id, queue, config)
                             asyncio.run(self.StartService(microService))
                             asyncio.run(self.Debug(f"Loading module {module_name}"))
                         except Exception as loadEx:
@@ -401,8 +403,8 @@ class microServiceBusHandler(BaseService):
     def update_token(self, token):
         self.settings["sas"] = token
         self.save_settings(self.settings)
-        self.debug_sync(f"SAS token has been updated. Restarting")
-        self.restart()
+        self.debug_sync(f"SAS token has been updated.")
+        #self.restart()
 
     def not_implemented(self, event_handler):
         asyncio.run(self.ThrowError(
