@@ -4,6 +4,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from packaging import version
 import asyncio
 import importlib
+import pathlib
 import uuid
 import re
 import sys
@@ -109,6 +110,12 @@ class microServiceBusHandler(BaseService):
         
         return settings
 
+    def get_package_info(self):
+        root = pathlib.Path(__file__).resolve().parent
+        content = (root / "package.json").read_text()
+        packageInfo = json.loads(content)
+        return packageInfo
+
     def save_settings(self, settings):
         with open(self.msb_settings_path, 'w') as settings_file:
             json.dump(settings, settings_file)
@@ -120,9 +127,12 @@ class microServiceBusHandler(BaseService):
             self.settings = settings
             self.save_settings(settings)
 
+        packageInfo = self.get_package_info()
+        await self.Debug("Package version: \033[95m" + packageInfo["version"] + "\033[0m")
         await self.Debug("Node id: \033[95m" + settings["nodeName"] + "\033[0m")
         await self.Debug("Organization id:\033[95m " + settings["organizationId"] + "\033[0m")
         await self.Debug("Mac addresses:\033[95m " + ':'.join(re.findall('..', '%012x' % uuid.getnode())) + "\033[0m")
+
 
         hostData = {
             "id": "",
@@ -130,7 +140,7 @@ class microServiceBusHandler(BaseService):
             "Name": settings["nodeName"],
             "machineName": socket.gethostname(),
             "OrganizationID": settings["organizationId"],
-            "npmVersion": "3.12.3",
+            "npmVersion": packageInfo["version"] ,
             "sas": settings["sas"],
             "recoveredSignIn": "False",
             "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
