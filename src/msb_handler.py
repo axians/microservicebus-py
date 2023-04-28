@@ -133,6 +133,11 @@ class microServiceBusHandler(BaseService):
         await self.Debug("Organization id:\033[95m " + settings["organizationId"] + "\033[0m")
         await self.Debug("Mac addresses:\033[95m " + ':'.join(re.findall('..', '%012x' % uuid.getnode())) + "\033[0m")
 
+        ipAddresses = []
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    ipAddresses.append(snic.address)
 
         hostData = {
             "id": "",
@@ -142,6 +147,7 @@ class microServiceBusHandler(BaseService):
             "OrganizationID": settings["organizationId"],
             "npmVersion": packageInfo["version"] ,
             "sas": settings["sas"],
+            "ipAddresses": ipAddresses,
             "recoveredSignIn": "False",
             "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
         }
@@ -356,7 +362,7 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.Debug(f"Node state {state}"))
         asyncio.run(self.SubmitAction("orchestrator", "_set_state", {"state": state}))
 
-        if sign_in_response['itineraries'] is not None:
+        if sign_in_response['itineraries'] is not None and state == "Active":
             for itinerary in sign_in_response['itineraries']:
                 pythonActivities = [srv for srv in itinerary["activities"]
                                     if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']

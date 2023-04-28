@@ -1,6 +1,6 @@
 {
     "name":"microservicebus-py",
-    "version":"0.9.0",
+    "version":"0.9.1",
     "description":"Python agent for microServiceBus.com. Please visit https://microservicebus.com for more information.",
     "long_description":"",
     "long_description_content_type":"text/markdown",

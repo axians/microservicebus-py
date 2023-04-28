@@ -49,6 +49,9 @@ pip install twine
 pip install wheel
 ```
 3. Before building the project, remove all files in /dist folder
+```
+rm .\dist\* 
+```
 4. To build and convert to tar
 ```
 python3 setup.py sdist bdist_wheel
