@@ -31,11 +31,12 @@ class microServiceBusHandler(BaseService):
         self._connected = False
         self._reconnect = False
         self._missedheartbeat = 0
-        self.base_uri = "https://microservicebus.com"
+
+        self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
+                
         home = str(Path.home())
         self.msb_dir = f"{os.environ['HOME']}/msb-py"
-        self.printf(f"os.environ =  {os.environ}")
-
+        
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
         try:
@@ -53,7 +54,6 @@ class microServiceBusHandler(BaseService):
         try:
             
             self.settings = self.get_settings()
-            
             if "hubUri" in self.settings:
                 self.base_uri = self.settings["hubUri"]
             else:
@@ -352,7 +352,8 @@ class microServiceBusHandler(BaseService):
             sign_in_response["hubUri"] = self.settings["hubUri"]
         
         sign_in_response["hubUri"] = self.base_uri
-        self.save_settings(sign_in_response)
+        self.save_settings(sign_in_response)        
+        
         asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
         
         if os.path.isdir(self.service_path) == False:
@@ -573,7 +574,7 @@ class microServiceBusHandler(BaseService):
         boot_status = current_platform["boot-status"]
         installed = current_platform["installed.timestamp"]
 
-        uri = "https://microservicebus.com/api/nodeimages/" + \
+        uri = f"{self.base_uri}/api/nodeimages/" + \
             self.get_settings()["organizationId"] + "/" + platform
         self.printf("Notified on new firmware")
         self.printf("Current firmware platform: " + platform)

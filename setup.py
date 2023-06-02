@@ -23,8 +23,6 @@ if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
         install_req = f.read().splitlines()
 
-
-
 # This call to setup() does all the work
 setup(
     name=settings["name"],
