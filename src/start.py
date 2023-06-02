@@ -3,7 +3,12 @@ import asyncio
 import logging
 import os
 import sys
+import utils
+
 sys.path.insert(1, os.path.dirname(__file__))
+
+#utils.check_version()
+
 from orchestrator_service import Orchestrator
 
 logging.basicConfig(
