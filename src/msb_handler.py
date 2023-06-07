@@ -86,7 +86,8 @@ class microServiceBusHandler(BaseService):
     # endregion
     # region Private methods
     def debug_sync(self, message):
-        asyncio.run(self.Debug(message))
+        self.printf(message)
+        #asyncio.run(self.Debug(message))
 
     def get_settings(self):
         settings = {
