@@ -1,5 +1,14 @@
-import asyncio
+import asyncio, logging
+from logging.handlers import RotatingFileHandler
 from base_service import BaseService
+
+
+logging.basicConfig (
+    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
+    format='%(asctime)s: %(message)s',
+    encoding='utf-8',
+    level=logging.WARNING
+)
 
 class Logger(BaseService):
     def __init__(self, id, queue):
@@ -21,12 +30,12 @@ class Logger(BaseService):
         self.debug = message.message[0]
  
     async def _debug(self, message):
-       self.printf(f"mSB:[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
+       logging.warning(f"[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
     
     async def _error(self, message):
-       self.printf(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
+       logging.error(f"mSB:[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
 
