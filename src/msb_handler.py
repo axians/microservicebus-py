@@ -86,7 +86,8 @@ class microServiceBusHandler(BaseService):
     # endregion
     # region Private methods
     def debug_sync(self, message):
-        asyncio.run(self.Debug(message))
+        self.printf(message)
+        #asyncio.run(self.Debug(message))
 
     def get_settings(self):
         settings = {
@@ -119,6 +120,8 @@ class microServiceBusHandler(BaseService):
     def save_settings(self, settings):
         with open(self.msb_settings_path, 'w') as settings_file:
             json.dump(settings, settings_file)
+            self.settings = settings
+            self.printf("Settings saved")
 
     async def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
@@ -211,7 +214,11 @@ class microServiceBusHandler(BaseService):
                 f"Error in msb.start_azure_iot_service: {e}"))
 
     async def refresh_vpn_settings(self, args):
-        self.connection.send("getVpnSettings", [""])
+        try:
+            await self.Debug(f"refresh_vpn_settings")
+            self.connection.send("getVpnSettings", [""])
+        except Exception as e:
+            await self.Debug(f"Error in refresh_vpn_settings: {e}")
 
     async def update_vpn_endpoint(self, args):
         self.connection.send("updateVpnEndpoint", [args.message[0]["ip"]])
@@ -343,79 +350,83 @@ class microServiceBusHandler(BaseService):
     # endregion
     # region SignalR callback functions
     def successful_sign_in(self, sign_in_response):
-        node_name = sign_in_response["nodeName"]
-        tag_list = sign_in_response["tags"]
+        try:
+            node_name = sign_in_response["nodeName"]
+            tag_list = sign_in_response["tags"]
 
-        asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
-        
-        if "hubUri" not in self.settings:
-            sign_in_response["hubUri"] = self.settings["hubUri"]
-        
-        sign_in_response["hubUri"] = self.base_uri
-        self.save_settings(sign_in_response)        
-        
-        asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
-        
-        if os.path.isdir(self.service_path) == False:
-            os.mkdir(self.service_path)
+            if "hubUri" not in self.settings:
+                sign_in_response["hubUri"] = self.settings["hubUri"]
+            
+            sign_in_response["hubUri"] = self.base_uri
+            self.save_settings(sign_in_response)        
+            
+            asyncio.run(self.SubmitAction("*", "msb_signed_in", {}))
+            
+            if os.path.isdir(self.service_path) == False:
+                os.mkdir(self.service_path)
 
-        state = self.settings["state"]
-        asyncio.run(self.Debug(f"Node state {state}"))
-        asyncio.run(self.SubmitAction("orchestrator", "_set_state", {"state": state}))
+            state = self.settings["state"]
+            asyncio.run(self.Debug(f"Node state {state}"))
+            asyncio.run(self.SubmitAction("orchestrator", "_set_state", {"state": state}))
 
-        if sign_in_response['itineraries'] is not None and state == "Active":
-            for itinerary in sign_in_response['itineraries']:
-                pythonActivities = [srv for srv in itinerary["activities"]
-                                    if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']
-                for pythonActivity in pythonActivities:
-                    try:
-                        host_config = [srv for srv in pythonActivity["userData"]
-                                    ["config"]["generalConfig"] if srv["id"] == 'host']
-
-                        # Check if activity is set to run on node
-                        if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
-                            continue
-
-                        organization_id = sign_in_response["organizationId"]
-                        file_name = pythonActivity["userData"]["type"].replace(
-                            "_py", ".py")
-
-                        uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
-                            "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
-
-                        service_file = requests.get(uri, allow_redirects=True, verify=False)
-                        service_file_name = os.path.join(
-                            self.service_path, file_name)
-
-                        file = open(service_file_name, 'wb+')
-                        file.write(service_file.content)
-                        file.close()
-
-                        module_name = pythonActivity["userData"]["type"].replace(
-                            "_py", "")
-                        service_name = pythonActivity["userData"]["type"]
-                        service_config = pythonActivity["userData"]["config"]
-
+            if sign_in_response['itineraries'] is not None and state == "Active":
+                for itinerary in sign_in_response['itineraries']:
+                    pythonActivities = [srv for srv in itinerary["activities"]
+                                        if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']
+                    for pythonActivity in pythonActivities:
                         try:
-                            spec = importlib.util.spec_from_file_location(
-                                module_name, service_file_name)
-                            module = importlib.util.module_from_spec(spec)
-                            spec.loader.exec_module(module)
-                            MicroService = getattr(module, module_name)
-                            
-                            microService = MicroService(service_name.lower(), self.queue, service_config)  # (id, queue, config)
-                            asyncio.run(self.StartService(microService))
-                            asyncio.run(self.Debug(f"Loading module {module_name}"))
-                        except Exception as loadEx:
-                            asyncio.run(self.Debug(f"Unable to load {module_name}service: Error: {loadEx}"))
-                            print(f"Unable to load {module_name}service: Error: {loadEx}")
+                            host_config = [srv for srv in pythonActivity["userData"]
+                                        ["config"]["generalConfig"] if srv["id"] == 'host']
 
-                    except Exception as ex:
-                        print("Unable to start service")
+                            # Check if activity is set to run on node
+                            if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
+                                continue
 
-        settings = self.get_settings()
-        self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
-        self.sendHeartbeat()
+                            organization_id = sign_in_response["organizationId"]
+                            file_name = pythonActivity["userData"]["type"].replace(
+                                "_py", ".py")
+
+                            uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
+                                "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
+
+                            service_file = requests.get(uri, allow_redirects=True, verify=False)
+                            service_file_name = os.path.join(
+                                self.service_path, file_name)
+
+                            file = open(service_file_name, 'wb+')
+                            file.write(service_file.content)
+                            file.close()
+
+                            module_name = pythonActivity["userData"]["type"].replace(
+                                "_py", "")
+                            service_name = pythonActivity["userData"]["type"]
+                            service_config = pythonActivity["userData"]["config"]
+
+                            try:
+                                spec = importlib.util.spec_from_file_location(
+                                    module_name, service_file_name)
+                                module = importlib.util.module_from_spec(spec)
+                                spec.loader.exec_module(module)
+                                MicroService = getattr(module, module_name)
+                                
+                                microService = MicroService(service_name.lower(), self.queue, service_config)  # (id, queue, config)
+                                asyncio.run(self.StartService(microService))
+                                asyncio.run(self.Debug(f"Loading module {module_name}"))
+                            except Exception as loadEx:
+                                asyncio.run(self.Debug(f"Unable to load {module_name}service: Error: {loadEx}"))
+                                print(f"Unable to load {module_name}service: Error: {loadEx}")
+
+                        except Exception as ex:
+                            print("Unable to start service")
+
+            settings = self.get_settings()
+            self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
+            self.sendHeartbeat()
+            asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
+            
+        except Exception as ex:
+            asyncio.run(self.Debug(f"sign_in_response error: {ex}"))
+            asyncio.run(self.Debug(f"sign_in_response: {sign_in_response}"))
 
     def update_token(self, token):
         self.settings["sas"] = token
@@ -428,9 +439,13 @@ class microServiceBusHandler(BaseService):
             f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
 
     def ping_response(self, conn_id):
-        settings = self.get_settings()
-        self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
-        asyncio.run(self.Debug("Ping response"))
+        try:
+            asyncio.run(self.Debug(f"Ping request"))
+            settings = self.get_settings()
+            self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
+            asyncio.run(self.Debug("Ping response"))
+        except Exception as e:
+            asyncio.run(self.Debug(f"Error in ping_response: {e}"))
     
     def connected(self):
         self.debug_sync("Connection opened and handshake received ready to send messages")

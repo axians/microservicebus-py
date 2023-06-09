@@ -50,7 +50,7 @@ pip install wheel
 ```
 3. Before building the project, remove all files in /dist folder
 ```
-rm .\dist\* 
+rm ./dist/* 
 ```
 4. To build and convert to tar
 ```
