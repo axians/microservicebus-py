@@ -30,6 +30,7 @@ class microServiceBusHandler(BaseService):
         self.ready = False
         self._connected = False
         self._reconnect = False
+        self.signed_in = False
         self._missedheartbeat = 0
 
         self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
@@ -87,7 +88,7 @@ class microServiceBusHandler(BaseService):
     # region Private methods
     def debug_sync(self, message):
         self.printf(message)
-        #asyncio.run(self.Debug(message))
+        ##asyncio.run(self.Debug(message))
 
     def get_settings(self):
         settings = {
@@ -257,13 +258,13 @@ class microServiceBusHandler(BaseService):
         self.connection.on("signInMessage", lambda sign_in_response: self.successful_sign_in(sign_in_response[0]))
         self.connection.on("updatedToken", lambda args: self.update_token(args[0]))
         self.connection.on("ping", lambda conn_id: self.ping_response(conn_id[0]))
-        self.connection.on("errorMessage", lambda arg: self.debug_sync(arg[0]))
+        self.connection.on("errorMessage", lambda arg: self.handle_error(arg))
         self.connection.on("restart", lambda args: self.restart())
         self.connection.on("reboot", lambda args: self.reboot())
         self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("changeState", lambda args: self.change_state(args[0]))
         self.connection.on("changeDebug", lambda args: self.change_debug(args[0]))
-        self.connection.on("heartBeat", lambda messageList: self.printf("Heartbeat received: " + " ".join(messageList)))
+        self.connection.on("heartBeat", lambda args: self.receive_heartbeat(args[0]))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
             firmware_response[0], firmware_response[1]))
@@ -345,8 +346,15 @@ class microServiceBusHandler(BaseService):
         # endregion
 
         self.connection.start()
-        time.sleep(1)
-        self.set_interval(self.sendHeartbeat, 60 * 3)
+        time.sleep(2)
+        print(self.settings)
+
+        if "policies" not in self.settings:
+            self.settings["policies"] = { "disconnectPolicy": { "heartbeatTimeout": 30, "missedHearbeatLimit": 3}}
+
+        heartbeatTimeout = self.settings["policies"]["disconnectPolicy"]["heartbeatTimeout"]
+        self.set_interval(self.send_heartbeat, heartbeatTimeout)
+        await self.Debug(f"Start hearbeat at {heartbeatTimeout} seconds interval")
     # endregion
     # region SignalR callback functions
     def successful_sign_in(self, sign_in_response):
@@ -421,7 +429,8 @@ class microServiceBusHandler(BaseService):
 
             settings = self.get_settings()
             self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
-            self.sendHeartbeat()
+            self.send_heartbeat()
+            self.signed_in = True
             asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
             
         except Exception as ex:
@@ -451,7 +460,7 @@ class microServiceBusHandler(BaseService):
         self.debug_sync("Connection opened and handshake received ready to send messages")
         self._connected = True
 
-        if(self._reconnect is True):
+        if(self._reconnect is True and "id" in self.settings):
             id = self.settings["id"]
             # self.debug_sync(f"Waiting to reconnect")
             # time.sleep(10)
@@ -463,8 +472,30 @@ class microServiceBusHandler(BaseService):
         self._connected = False
         self._reconnect = True
 
-    def sendHeartbeat(self):
+    def send_heartbeat(self):
+        if self._missedheartbeat > 1:
+            asyncio.run(self.Debug(f"MISSING HEARTBEAT"))
+            missedHearbeatLimit = self.settings["policies"]["disconnectPolicy"]["missedHearbeatLimit"]
+            if self._missedheartbeat >= missedHearbeatLimit:
+                asyncio.run(self.Debug(f"\033[93m{self._missedheartbeat} missing heartbeats exceeding limit ({missedHearbeatLimit}). Restarting process\033[0m"))
+                self.restart()
+        
+        #asyncio.run(self.Debug(f"Send heatbeat"))        
+        self._missedheartbeat += 1
         self.connection.send("heartBeat", ["echo"])
+    
+    def receive_heartbeat(self, message):
+        self._missedheartbeat = 0
+        #asyncio.run(self.Debug(f"Received heatbeat"))
+
+    def handle_error(self, message):
+        asyncio.run(self.ThrowError(f"HUB ERROR: {message[0]}"))
+        if len(message) > 1 and message[1] == 9: #Secret is not valid
+            settings = {
+                "hubUri": self.base_uri
+            }
+            self.save_settings(settings)
+            os.execv(sys.executable, ['python'] + sys.argv)
 
     def report_state(self, id):
         node_name = self.settings["nodeName"]
