@@ -462,8 +462,6 @@ class microServiceBusHandler(BaseService):
 
         if(self._reconnect is True and "id" in self.settings):
             id = self.settings["id"]
-            # self.debug_sync(f"Waiting to reconnect")
-            # time.sleep(10)
             self.debug_sync(f"Reconnecting: {id}")
             self.connection.send("reconnected", [self.settings["id"]])
 
@@ -476,7 +474,7 @@ class microServiceBusHandler(BaseService):
         if self._missedheartbeat > 1:
             asyncio.run(self.Debug(f"MISSING HEARTBEAT"))
             missedHearbeatLimit = self.settings["policies"]["disconnectPolicy"]["missedHearbeatLimit"]
-            if self._missedheartbeat >= missedHearbeatLimit:
+            if self._missedheartbeat >= missedHearbeatLimit or self.signed_in == False:
                 asyncio.run(self.Debug(f"\033[93m{self._missedheartbeat} missing heartbeats exceeding limit ({missedHearbeatLimit}). Restarting process\033[0m"))
                 self.restart()
         
