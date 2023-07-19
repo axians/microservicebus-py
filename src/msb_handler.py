@@ -1,7 +1,9 @@
 from base_service import BaseService
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from packaging import version
+from urllib import parse
 import asyncio
 import importlib
 import pathlib
@@ -23,6 +25,13 @@ import platform
 import utils
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
+
+logging.basicConfig (
+    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
+    format='%(asctime)s: %(message)s',
+    encoding='utf-8',
+    level=logging.WARNING
+)
 
 class microServiceBusHandler(BaseService):
     # region Constructor
@@ -250,8 +259,8 @@ class microServiceBusHandler(BaseService):
         # Default listeners
         self.connection.on_open(lambda: self.connected())
         self.connection.on_close(lambda: self.disconnected())
-        self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown closed{data.error}"))
-        self.connection.on_reconnect(lambda: self.debug_sync(f"Reconnected to {self.base_uri}"))
+        self.connection.on_error(lambda data: self.debug_sync(f"An exception was thrown: {data.error}"))
+        self.connection.on_reconnect(lambda args: self.reconnected())
 
         # mSB.com listeners
         self.connection.on("nodeCreated", lambda sign_in_info: self.sign_in_sync(sign_in_info[0], True))
@@ -277,6 +286,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("startTerminal", lambda args: self.start_terminal(args[0], args[1]))
         self.connection.on("stopTerminal", lambda args: self.stop_terminal())
         self.connection.on("terminalCommand", lambda args: self.terminal_command(args[0]))
+        self.connection.on("downloadFile", lambda args: self.download_file(args[0]))
 
         # region Not implemented event handlers
         self.connection.on(
@@ -339,8 +349,8 @@ class microServiceBusHandler(BaseService):
             "dockerComposeUp", lambda response: self.not_implemented("dockerComposeUp"))
         self.connection.on(
             "dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
-        self.connection.on(
-            "downloadFile", lambda response: self.not_implemented("downloadFile"))
+        # self.connection.on(
+        #     "downloadFile", lambda response: self.not_implemented("downloadFile"))
         self.connection.on(
             "uploadFile", lambda response: self.not_implemented("uploadFile"))
         # endregion
@@ -350,7 +360,7 @@ class microServiceBusHandler(BaseService):
         print(self.settings)
 
         if "policies" not in self.settings:
-            self.settings["policies"] = { "disconnectPolicy": { "heartbeatTimeout": 30, "missedHearbeatLimit": 3}}
+            self.settings["policies"] = { "disconnectPolicy": { "heartbeatTimeout": 180, "missedHearbeatLimit": 3}}
 
         heartbeatTimeout = self.settings["policies"]["disconnectPolicy"]["heartbeatTimeout"]
         self.set_interval(self.send_heartbeat, heartbeatTimeout)
@@ -470,6 +480,10 @@ class microServiceBusHandler(BaseService):
         self._connected = False
         self._reconnect = True
 
+    def reconnected(self):
+        self.debug_sync(f"Reconnected to {self.base_uri}")
+        #self.connection.send("reconnected", [self.settings["id"]])
+
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
             asyncio.run(self.Debug(f"MISSING HEARTBEAT"))
@@ -484,11 +498,22 @@ class microServiceBusHandler(BaseService):
     
     def receive_heartbeat(self, message):
         self._missedheartbeat = 0
-        #asyncio.run(self.Debug(f"Received heatbeat"))
+        asyncio.run(self.Debug(f"Received heatbeat"))
+        try:
+            connection_id = parse.parse_qs(parse.urlparse(self.connection.transport.url).query)['id'][0]
+            #obj_vars = vars(self.connection.transport)
+            asyncio.run(self.Debug(f">>>>>>>>>>>>>connection_id: {connection_id}"))
+        except Exception as ex:
+            asyncio.run(self.Debug(f"error: {ex}"))
 
     def handle_error(self, message):
         asyncio.run(self.ThrowError(f"HUB ERROR: {message[0]}"))
-        if len(message) > 1 and message[1] == 9: #Secret is not valid
+        logging.error(f"[msb] \033[91mERROR:\033[0m {message[0]}")
+        self.printf(f"HUB ERROR: {message[0]}")
+        
+        time.sleep(1)
+
+        if len(message) > 1 and message[1] == 9: #Secret is not valid        
             settings = {
                 "hubUri": self.base_uri
             }
@@ -670,6 +695,7 @@ class microServiceBusHandler(BaseService):
         return t
 
     def refresh_vpn_settings_sync(self, args):
+        asyncio.run(self.Debug(f"Fetching VPN settings"))
         self.connection.send("getVpnSettings", [""])
     
     def get_vpn_settings_response(self, vpnConfig, interfaceName, endpoint):
@@ -693,6 +719,21 @@ class microServiceBusHandler(BaseService):
     def terminal_command(self, args):
         asyncio.run(self.SubmitAction("terminal", "_forward_command", args[0]))
 
+    def download_file(self, request):
+        try:
+            file_name = request["fileName"]
+            directory = request["directory"]
+            uri = request["uri"]
+            connId = request["connId"]
+            node_name = self.settings["nodeName"]
+            asyncio.run(self.Debug(f"downloading file ({file_name}) to {directory}"))
+            urllib.request.urlretrieve(uri, f"/{directory}/{file_name}")
+            asyncio.run(self.Debug(f"download complete"))
+            message = f"{file_name} has successfully been saved in ${directory} on ${node_name}."
+            self.connection.send("notify", [connId, message, "INFO"])
+
+        except Exception as ex:
+            asyncio.run(self.ThrowError(f"Error in msb.start: {e}"))
     # endregion
     # region Service callbacks
     async def request_connectionstring(self, message):
