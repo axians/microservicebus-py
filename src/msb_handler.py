@@ -164,11 +164,11 @@ class microServiceBusHandler(BaseService):
             "recoveredSignIn": "False",
             "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
         }
-
+        await self.Debug("Signing in")
         # Use for debugging
         #self.connection.send("signIn", [hostData])
         self.connection.send("signInAsync", [hostData])
-        await self.Debug("Signing in")
+        #await self.Debug("Signing in")
 
     def sign_in_sync(self, settings, first_sign_in):
         asyncio.run(self.sign_in(settings, first_sign_in))
@@ -354,10 +354,13 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "uploadFile", lambda response: self.not_implemented("uploadFile"))
         # endregion
+        try:
+            self.connection.start()
+        except Exception as ex:
+            await self.ThrowError(f"Unable to start SignalR!")
+            self._missedheartbeat = 100
 
-        self.connection.start()
         time.sleep(2)
-        print(self.settings)
 
         if "policies" not in self.settings:
             self.settings["policies"] = { "disconnectPolicy": { "heartbeatTimeout": 180, "missedHearbeatLimit": 3}}
@@ -496,7 +499,12 @@ class microServiceBusHandler(BaseService):
         self.connection.send("heartBeat", ["echo"])
     
     def receive_heartbeat(self, message):
-        self._missedheartbeat = 0
+        if self.signed_in == False:
+            asyncio.run(self.Debug(f"Received heatbeat but node has not successfully logged in yet"))
+            self._missedheartbeat += 1
+        else:
+            self._missedheartbeat = 0
+
         try:
             connection_id = parse.parse_qs(parse.urlparse(self.connection.transport.url).query)['id'][0]
             asyncio.run(self.Debug(f"Received heatbeat => connection_id: {connection_id}"))

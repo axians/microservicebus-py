@@ -72,8 +72,21 @@ class BaseService:
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 
-    async def ThrowError(self, message):
+    async def ThrowError(self, message, fault_code = None, fault_description = None):
+        if isinstance(message,dict):
+            if(fault_code != None):
+                message["fault_code"] = fault_code
+            if(fault_description != None):
+                message["fault_description"] = fault_description
+                
         msg = QueueMessage(self.id, "logger", "_error", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
+    async def Track(self, message, description = None):
+        if(description != None):
+            message["description"] = description
+        msg = QueueMessage(self.id, "logger", "_track", message)
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 
