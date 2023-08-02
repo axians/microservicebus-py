@@ -482,7 +482,6 @@ class microServiceBusHandler(BaseService):
 
     def reconnected(self):
         self.debug_sync(f"Reconnected to {self.base_uri}")
-        #self.connection.send("reconnected", [self.settings["id"]])
 
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
@@ -498,13 +497,11 @@ class microServiceBusHandler(BaseService):
     
     def receive_heartbeat(self, message):
         self._missedheartbeat = 0
-        asyncio.run(self.Debug(f"Received heatbeat"))
         try:
             connection_id = parse.parse_qs(parse.urlparse(self.connection.transport.url).query)['id'][0]
-            #obj_vars = vars(self.connection.transport)
-            asyncio.run(self.Debug(f">>>>>>>>>>>>>connection_id: {connection_id}"))
+            asyncio.run(self.Debug(f"Received heatbeat => connection_id: {connection_id}"))
         except Exception as ex:
-            asyncio.run(self.Debug(f"error: {ex}"))
+            asyncio.run(self.Debug(f"Received heatbeat => error: {ex}"))
 
     def handle_error(self, message):
         asyncio.run(self.ThrowError(f"HUB ERROR: {message[0]}"))
@@ -519,6 +516,10 @@ class microServiceBusHandler(BaseService):
             }
             self.save_settings(settings)
             os.execv(sys.executable, ['python'] + sys.argv)
+        elif len(message) > 1 and message[1] == 101: # Connection is lost, reconnect
+            asyncio.run(asyncio.sleep(10))
+            self.restart()
+
 
     def report_state(self, id):
         node_name = self.settings["nodeName"]
