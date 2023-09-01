@@ -273,6 +273,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("reset", lambda args: self.reset(args[0]))
         self.connection.on("changeState", lambda args: self.change_state(args[0]))
         self.connection.on("changeDebug", lambda args: self.change_debug(args[0]))
+        self.connection.on("changeTracking", lambda args: self.change_tracking(args[0]))
         self.connection.on("heartBeat", lambda args: self.receive_heartbeat(args[0]))
         self.connection.on("reportState", lambda id: self.report_state(id[0]))
         self.connection.on("updateFirmware", lambda firmware_response: self.update_firmware(
@@ -293,8 +294,8 @@ class microServiceBusHandler(BaseService):
             "getEndpoints", lambda response: self.not_implemented("getEndpoints"))
         self.connection.on(
             "updateItinerary", lambda response: self.not_implemented("updateItinerary"))
-        self.connection.on(
-            "changeTracking", lambda response: self.not_implemented("changeTracking"))
+        # self.connection.on(
+        #     "changeTracking", lambda response: self.not_implemented("changeTracking"))
         self.connection.on(
             "forceUpdate", lambda response: self.not_implemented("forceUpdate"))
         self.connection.on(
@@ -390,6 +391,10 @@ class microServiceBusHandler(BaseService):
             asyncio.run(self.Debug(f"Node state {state}"))
             asyncio.run(self.SubmitAction("orchestrator", "_set_state", {"state": state}))
 
+            if self.settings["policies"]["backgroundServicePolicy"] != None and self.settings["policies"]["backgroundServicePolicy"]["backgroundService"] != None:
+                backgroundService = self.settings["policies"]["backgroundServicePolicy"]["backgroundService"]
+                asyncio.run(self.Debug(f"backgroundService: {backgroundService}"))
+
             if sign_in_response['itineraries'] is not None and state == "Active":
                 for itinerary in sign_in_response['itineraries']:
                     pythonActivities = [srv for srv in itinerary["activities"]
@@ -434,7 +439,7 @@ class microServiceBusHandler(BaseService):
                                 asyncio.run(self.StartService(microService))
                                 asyncio.run(self.Debug(f"Loading module {module_name}"))
                             except Exception as loadEx:
-                                asyncio.run(self.Debug(f"Unable to load {module_name}service: Error: {loadEx}"))
+                                asyncio.run(self.Debug(f"Unable to load {module_name} service: Error: {loadEx}"))
                                 print(f"Unable to load {module_name}service: Error: {loadEx}")
 
                         except Exception as ex:
@@ -497,6 +502,7 @@ class microServiceBusHandler(BaseService):
         #asyncio.run(self.Debug(f"Send heatbeat"))        
         self._missedheartbeat += 1
         self.connection.send("heartBeat", ["echo"])
+        asyncio.run(self.SubmitAction("*", "_heartbeat", ""))
     
     def receive_heartbeat(self, message):
         if self.signed_in == False:
@@ -527,7 +533,6 @@ class microServiceBusHandler(BaseService):
         elif len(message) > 1 and message[1] == 101: # Connection is lost, reconnect
             asyncio.run(asyncio.sleep(10))
             self.restart()
-
 
     def report_state(self, id):
         node_name = self.settings["nodeName"]
@@ -634,10 +639,18 @@ class microServiceBusHandler(BaseService):
             asyncio.run(self.SubmitAction("orchestrator", "_start_custom_services", args))
 
     def change_debug(self, enableDebug):
-        self.debug_sync(f"Console debug {'enabled' if enableDebug else 'disabled'}")
+        asyncio.run(self.Debug(f"Console debug {'enabled' if enableDebug else 'disabled'}"))
+        time.sleep(0.1)
         self.settings["debug"] = enableDebug
         self.save_settings(self.settings)
         asyncio.run(self.SubmitAction("logger", "_change_debug", enableDebug))
+
+    def change_tracking(self, enableTracking):
+        asyncio.run(self.Debug(f"Tracking {'enabled' if enableTracking else 'disabled'}"))
+        time.sleep(0.1)
+        self.settings["enableTracking"] = enableTracking
+        self.save_settings(self.settings)
+        asyncio.run(self.SubmitAction("*", "_change_tracking", enableTracking))
 
     def update_firmware(self, force, connid):
         self.printf(force)

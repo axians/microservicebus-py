@@ -34,7 +34,7 @@ class Logger(BaseService):
     
     async def StateUpdate(self, message):
         state = message.message[0]
-        await self.Debug(f"Received: {message}")
+        #await self.Debug(f"Received: {message}")
 
     async def _change_debug(self, message):
         self.debug = message.message[0]
