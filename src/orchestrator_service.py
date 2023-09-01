@@ -5,6 +5,7 @@ import urllib3
 from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
+from watchdog_service import Watchdog
 from vpn_helper import VPNHelper
 from terminal_service import Terminal
 
@@ -32,6 +33,8 @@ class Orchestrator(BaseService):
         await self.StartService(logger)
         msbHandler = microServiceBusHandler("msb", self.queue)
         await self.StartService(msbHandler)
+        wachdog = Watchdog("watchdog", self.queue)
+        await self.StartService(wachdog)
         vpnHelper = VPNHelper("vpnhelper", self.queue)
         await self.StartService(vpnHelper)
         terminal = Terminal("terminal", self.queue)
@@ -59,7 +62,8 @@ class Orchestrator(BaseService):
                             function = getattr(service, msg.action)
                             self.loop.create_task(function(msg))
                         except:
-                            await self.Debug(f"{service.id} has no function called {msg.action}")
+                            pass
+                            #await self.Debug(f"{service.id} has no function called {msg.action}")
                 else:  # Send to one service
                     service = next(
                         (srv for srv in self.services if srv.id == msg.destination), None)
@@ -88,7 +92,6 @@ class Orchestrator(BaseService):
             await self.Debug(f"Starting {service.id} state: {self.state}")
             
             if isinstance(service, CustomService):
-                x=2
                 await self.Debug(f"config: {service.GetState()}")
                 if self.state == "Active" and service.GetState() == True:
                     task = self.loop.create_task(service.Start())
