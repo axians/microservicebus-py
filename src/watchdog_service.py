@@ -1,5 +1,5 @@
 import asyncio, threading, datetime, os
-from datetime import datetime
+import time
 from base_service import BaseService
 from urllib import request
 from pathlib import Path
@@ -19,11 +19,10 @@ class Watchdog(BaseService):
         try:
             await self.Debug("Perfoming health check")
             internet_ok = self.internet_check()
-
-            file_path = f"{self.msb_dir}/wachdog"
+            file_path = "/tmp/msb.pid"
 
             with open(file_path, 'w') as watchdog_file:
-                watchdog_file.write(datetime.now().isoformat())
+                watchdog_file.write(str(int(time.time())))
 
         except Exception as err: 
             await self.ThrowError(f"Faild to write to watchdog file: {err}")
