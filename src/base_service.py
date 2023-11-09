@@ -56,6 +56,15 @@ class BaseService:
         
         return settings
 
+    async def save_settings(self, settings):
+        try:
+            with open(self.msb_settings_path, 'w') as settings_file:
+                json.dump(settings, settings_file)
+                self.settings = settings
+
+                await self.Debug("Settings saved")
+        except Exception as e:
+            await self.ThrowError("Failed to save settings")
 
     async def msb_signed_in(self, args):
         pass

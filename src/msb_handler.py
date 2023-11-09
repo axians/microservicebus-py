@@ -4,26 +4,9 @@ from logging.handlers import RotatingFileHandler
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from packaging import version
 from urllib import parse
-import asyncio
-import importlib
-import pathlib
-import uuid
-import re
-import sys
-import traceback
-import socket
-import requests
-import os
-import json
-import psutil
-import time
-import logging
-import glob
-import urllib.request
-import threading
-import platform
-import utils
-import ssl
+import asyncio, importlib, pathlib, uuid, re, sys, traceback, socket, requests, os, json, psutil
+import platform, time, logging, glob, urllib. request, threading, utils, ssl
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 logging.basicConfig (
@@ -41,6 +24,7 @@ class microServiceBusHandler(BaseService):
         self._reconnect = False
         self.signed_in = False
         self._missedheartbeat = 0
+        self.rauc_handler = None
 
         self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
                 
@@ -62,7 +46,6 @@ class microServiceBusHandler(BaseService):
 
     async def Start(self):
         try:
-            
             self.settings = self.get_settings()
             if "hubUri" in self.settings:
                 self.base_uri = self.settings["hubUri"]
@@ -144,13 +127,28 @@ class microServiceBusHandler(BaseService):
         await self.Debug("Package version: \033[95m" + packageInfo["version"] + "\033[0m")
         await self.Debug("Node id: \033[95m" + settings["nodeName"] + "\033[0m")
         await self.Debug("Organization id:\033[95m " + settings["organizationId"] + "\033[0m")
-        await self.Debug("Mac addresses:\033[95m " + ':'.join(re.findall('..', '%012x' % uuid.getnode())) + "\033[0m")
 
+        macAddresses = []
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    macAddresses.append(utils.getHwAddr(interface))
+        await self.Debug(f"Mac addresses:\033[95m {macAddresses} \033[0m")
+ 
         ipAddresses = []
+        macAddresses = []
+
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET:
                     ipAddresses.append(snic.address)
+                    macAddresses.append(utils.getHwAddr(interface))
+
+        firmware = None
+        try:
+            firmware = self.settings["firmware"]
+        except Exception:
+            pass
 
         hostData = {
             "id": "",
@@ -162,7 +160,8 @@ class microServiceBusHandler(BaseService):
             "sas": settings["sas"],
             "ipAddresses": ipAddresses,
             "recoveredSignIn": "False",
-            "macAddresses": [':'.join(re.findall('..', '%012x' % uuid.getnode()))]
+            "macAddresses": macAddresses,
+            "firmware": firmware
         }
         await self.Debug("Signing in")
         # Use for debugging
@@ -174,15 +173,22 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.sign_in(settings, first_sign_in))
 
     async def create_node(self):
-        mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
-        await self.Debug(mac)
+        macAddresses = []
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    macAddresses.append(utils.getHwAddr(interface))
+
+        
+        await self.Debug(macAddresses)
         request = {
             "hostName" :socket.gethostname(),
             "imei":None,
             "ipAddress":"",
-            "macAddresses": mac,
+            "macAddresses": macAddresses,
             "isModule":False
         }
+        self.printf(request)
         self.connection.send("assertNode", [request])
         hurUri = self.settings["hubUri"]
         await self.Debug("\033[93m Device information such as host name, MAC addresses and IP addresses\033[0m")
@@ -375,9 +381,13 @@ class microServiceBusHandler(BaseService):
         try:
             node_name = sign_in_response["nodeName"]
             tag_list = sign_in_response["tags"]
-
+            
+            # Keep some settings from previous sign in
             if "hubUri" not in self.settings:
                 sign_in_response["hubUri"] = self.settings["hubUri"]
+            
+            if "firmware" not in self.settings:
+                sign_in_response["firmware"] = self.settings["firmware"]
             
             sign_in_response["hubUri"] = self.base_uri
             self.save_settings(sign_in_response)        
@@ -541,7 +551,7 @@ class microServiceBusHandler(BaseService):
             'notify', [id, f'Fetching environment state from {node_name}', 'INFO'])
 
         networks = []
-        ##xxx = psutil.net_if_stats()
+        
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET:
@@ -555,24 +565,7 @@ class microServiceBusHandler(BaseService):
                     networks.append(ni)
                 else:
                     self.printf("ignore")
-                    
-                    
-                    # if any(x["name"] == interface for x in networks) == False:
-                    #     networks.append(ni)
-                        
-        ##yyy = psutil.net_if_addrs().items()
 
-        # interfaces = netifaces.interfaces()
-        # for interface in interfaces:
-        #     addrs = netifaces.ifaddresses(interface)
-        #     if netifaces.AF_INET in addrs.keys():
-        #         ni = {
-        #                 "name": interface,
-        #                 "ip_address":addrs[netifaces.AF_INET][0]["addr"],
-        #                 "mac_address": utils.getHwAddr(interface),
-        #                 "netmask":addrs[netifaces.AF_INET][0]["netmask"],
-        #                 "type": ''}
-        #         networks.append(ni)
         memory_info = psutil.virtual_memory()
         if_addrs = psutil.net_if_addrs()
         cpu_times = psutil.cpu_times()
@@ -582,6 +575,7 @@ class microServiceBusHandler(BaseService):
             slot_status = self.rauc_handler.get_slot_status()
         except Exception:
             pass
+
         state = {
             "networks": networks,
             "memory": {
@@ -653,11 +647,14 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.SubmitAction("*", "_change_tracking", enableTracking))
 
     def update_firmware(self, force, connid):
-        self.printf(force)
-        self.printf(connid)
-        platform_status = dict(self.rauc_handler.get_slot_status())
-        print(platform_status)
-        print(type(platform_status))
+        asyncio.run(self.Debug("test"))
+        if self.rauc_handler == None:
+            # If rauc is not installed, forward the request if there is another service that could handle it
+            asyncio.run(self.SubmitAction("*", "_update_firmware", force))
+            return
+        
+        slot_status = self.rauc_handler.get_slot_status();
+        platform_status = dict(slot_status)
         rootfs0_status = platform_status["rootfs0"]["state"]
         current_platform = platform_status["rootfs0"] if rootfs0_status == "booted" else platform_status["rootfs1"]
         platform = current_platform["bundle.compatible"]
