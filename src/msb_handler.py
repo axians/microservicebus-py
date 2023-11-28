@@ -127,6 +127,8 @@ class microServiceBusHandler(BaseService):
         await self.Debug("Package version: \033[95m" + packageInfo["version"] + "\033[0m")
         await self.Debug("Node id: \033[95m" + settings["nodeName"] + "\033[0m")
         await self.Debug("Organization id:\033[95m " + settings["organizationId"] + "\033[0m")
+        await self.Debug(f"Settings path:\033[95m {self.msb_settings_path}\033[0m")
+        
 
         macAddresses = []
         for interface, snics in psutil.net_if_addrs().items():
@@ -185,7 +187,7 @@ class microServiceBusHandler(BaseService):
             "hostName" :socket.gethostname(),
             "imei":None,
             "ipAddress":"",
-            "macAddresses": macAddresses,
+            "macAddresses": ','.join(macAddresses),
             "isModule":False
         }
         self.printf(request)
@@ -386,7 +388,7 @@ class microServiceBusHandler(BaseService):
             if "hubUri" not in self.settings:
                 sign_in_response["hubUri"] = self.settings["hubUri"]
             
-            if "firmware" not in self.settings:
+            if "firmware" in self.settings:
                 sign_in_response["firmware"] = self.settings["firmware"]
             
             sign_in_response["hubUri"] = self.base_uri
@@ -449,7 +451,7 @@ class microServiceBusHandler(BaseService):
                                 asyncio.run(self.StartService(microService))
                                 asyncio.run(self.Debug(f"Loading module {module_name}"))
                             except Exception as loadEx:
-                                asyncio.run(self.Debug(f"Unable to load {module_name} service: Error: {loadEx}"))
+                                asyncio.run(self.ThrowError(f"Unable to load {module_name} service: Error: {loadEx}"))
                                 print(f"Unable to load {module_name}service: Error: {loadEx}")
 
                         except Exception as ex:
