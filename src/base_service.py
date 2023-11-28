@@ -3,6 +3,7 @@ import json
 import asyncio
 import subprocess
 import importlib
+import requests
 from queue_message import QueueMessage
 
 
@@ -28,15 +29,36 @@ class BaseService:
         pass
 
     async def StateUpdate(self, state):
-        pass
-    
+       pass
+
     async def _send_event(self, message):
         pass
 
     async def _change_state(self, message):
         pass
 
+    async def get_configuration(self):
+        try:
+            await self.Debug(f"Calling get_configuration")
+            session = requests.session()
+            settings = self.get_settings()
+            
+            if settings["deviceState"]["desired"]["msbConfig"] != None:
+                uri = settings["deviceState"]["desired"]["msbConfig"]["uri"]
+                #await self.Debug(f"uri: {uri}")
+                respose = session.get(uri)
+                if respose.status_code == 200:
+                    config = respose.json()
+                    #await self.Debug("Configuration fetched")
+                    return config
+                else:
+                    await self.ThrowError(f"Error fetching configuration: {respose.status_code}")
+       
+            return None
 
+        except Exception as ex:
+            await self.Debug(f"Error fetching configuration: {ex}") 
+    
     def get_settings(self):
         # Check if directory exists
         if os.path.isdir(self.msb_dir) == False:
@@ -56,6 +78,15 @@ class BaseService:
         
         return settings
 
+    async def save_settings(self, settings):
+        try:
+            with open(self.msb_settings_path, 'w') as settings_file:
+                json.dump(settings, settings_file)
+                self.settings = settings
+
+                await self.Debug("Settings saved")
+        except Exception as e:
+            await self.ThrowError("Failed to save settings")
 
     async def msb_signed_in(self, args):
         pass
