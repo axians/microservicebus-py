@@ -54,7 +54,7 @@ def check_version():
             print(f"preferedVersion: {preferedVersion}")
         
         if preferedVersion != currentVersion:
-            print(f"Updating from {currentVersion }to {preferedVersion}")
+            print(f"Updating from {currentVersion} to {preferedVersion}")
             gitUri = f"https://api.github.com/repos/axians/microservicebus-py/releases"
             response = urllib.request.urlopen(gitUri)
             data = response.read()
@@ -68,19 +68,41 @@ def check_version():
             response = requests.get(tarball_url, stream=True)
 
             if response.status_code == 200:
-                install_dir = f"{currentDirectory}/install"
+                install_dir = f"{currentDirectory}/../install"
+                if os.path.exists(f"{currentDirectory}/../install"):
+                    shutil.rmtree(f"{currentDirectory}/../install")
+                    print("Removed install directory")
+
                 tar_file = tarfile.open(fileobj=response.raw, mode="r|gz")
                 tar_file.extractall(path=install_dir)
                 top_directory = os.listdir(install_dir)[0]
+                print(f"top_directory: {top_directory}")
+                
                 src_directory = f"{install_dir}/{top_directory}/src"
-                dest_directory = f"{currentDirectory}/src_new/"
+                dest_directory = f"{currentDirectory}/../src_new/"
+                print(f"src_directory: {src_directory}")
+                print(f"dest_directory: {dest_directory}")
+
+                if os.path.exists(f"{currentDirectory}/../src_new"):
+                    shutil.rmtree(f"{currentDirectory}/../src_new")
+                    print("Removed src_new directory")
+
                 shutil.copytree(src_directory, dest_directory)
                 shutil.rmtree(src_directory)
-                if os.path.exists(f"{currentDirectory}/src_old"):
-                    shutil.rmtree(f"{currentDirectory}/src_old")
+                if os.path.exists(f"{currentDirectory}/../src_old"):
+                    shutil.rmtree(f"{currentDirectory}/../src_old")
+                    print("Removed src_old directory")
+                
+                shutil.copytree(f"{currentDirectory}", f"{currentDirectory}/../src_old")
+                #os.rename(f"{currentDirectory}/src", f"{currentDirectory}/../src_old")
+                for filename in os.listdir(currentDirectory):
+                    print(f"\tRemoving {filename}")
+                    os.remove(f"{currentDirectory}/{filename}")
 
-                os.rename(f"{currentDirectory}/src", f"{currentDirectory}/src_old")
-                os.rename(f"{currentDirectory}/src_new", f"{currentDirectory}/src")
+                for filename in os.listdir(f"{currentDirectory}/../src_new"):
+                    print(f"\tCopying {filename}")
+                    shutil.copyfile(f"{currentDirectory}/../src_new/{filename}", f"{currentDirectory}/{filename}")
+                #os.rename(f"{currentDirectory}/../src_new", f"{currentDirectory}")
                 print("Successfully updated")
     
     except Exception as e:
