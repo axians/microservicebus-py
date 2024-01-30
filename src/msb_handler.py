@@ -257,7 +257,7 @@ class microServiceBusHandler(BaseService):
                 "type": "raw", # "raw" means it will continue to call the hub
                 "enable_trace": False,
                 "keep_alive_interval": 15,
-                "reconnect_interval": 2000, # The interval does not seam to to have any affect 
+                "reconnect_interval": 5, # The interval does not seam to to have any affect 
                 #"intervals": [2000,5000,10000,15000]
                 #"intervals": [2,5,5,5,5,5,5,5,10,10,30,30,60,60,120,120,1200,1200,1200,2400,2400]
             }).build()
@@ -358,8 +358,6 @@ class microServiceBusHandler(BaseService):
             "dockerComposeUp", lambda response: self.not_implemented("dockerComposeUp"))
         self.connection.on(
             "dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
-        # self.connection.on(
-        #     "downloadFile", lambda response: self.not_implemented("downloadFile"))
         self.connection.on(
             "uploadFile", lambda response: self.not_implemented("uploadFile"))
         # endregion
@@ -406,26 +404,42 @@ class microServiceBusHandler(BaseService):
             if self.settings["policies"]["backgroundServicePolicy"] != None and self.settings["policies"]["backgroundServicePolicy"]["backgroundService"] != None:
                 backgroundService = self.settings["policies"]["backgroundServicePolicy"]["backgroundService"]
                 asyncio.run(self.Debug(f"backgroundService: {backgroundService}"))
-
+            
             if sign_in_response['itineraries'] is not None and state == "Active":
                 for itinerary in sign_in_response['itineraries']:
+                    if itinerary["enabled"] == False:
+                        continue
+                    
                     pythonActivities = [srv for srv in itinerary["activities"]
                                         if "baseType" in srv["userData"] and srv["userData"]["baseType"] == 'pythonfile']
+                    
                     for pythonActivity in pythonActivities:
                         try:
-                            host_config = [srv for srv in pythonActivity["userData"]
-                                        ["config"]["generalConfig"] if srv["id"] == 'host']
+                            general_config = pythonActivity["userData"]["config"]["generalConfig"]
 
+                            name_config = next(filter(lambda x: x["id"] == "name", general_config))
+                            activity_name = name_config["value"]
+                            
+                            host_config = next(filter(lambda x: x["id"] == "host", general_config))
+                            
                             # Check if activity is set to run on node
-                            if host_config[0]["value"] != node_name and host_config[0]["value"] not in tag_list:
+                            if host_config["value"] != node_name and host_config["value"] not in tag_list:
                                 continue
-
+                            
+                            enabled_config = next(filter(lambda x: x["id"] == "enabled", general_config))
+                            if enabled_config["value"] == False:
+                                continue
+                            
                             organization_id = sign_in_response["organizationId"]
-                            file_name = pythonActivity["userData"]["type"].replace(
-                                "_py", ".py")
+                            file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
 
-                            uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"][
-                                "isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
+                            uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"]["isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
+
+                            bind_to_version = pythonActivity["userData"]["bindToVersion"]
+                            script_version = pythonActivity["userData"]["version"]
+
+                            if bind_to_version == True:
+                                uri = f"{uri}/{script_version}"
 
                             service_file = requests.get(uri, allow_redirects=True, verify=False)
                             service_file_name = os.path.join(
@@ -435,11 +449,10 @@ class microServiceBusHandler(BaseService):
                             file.write(service_file.content)
                             file.close()
 
-                            module_name = pythonActivity["userData"]["type"].replace(
-                                "_py", "")
+                            module_name = pythonActivity["userData"]["type"].replace("_py", "")
                             service_name = pythonActivity["userData"]["type"]
                             service_config = pythonActivity["userData"]["config"]
-
+                            
                             try:
                                 spec = importlib.util.spec_from_file_location(
                                     module_name, service_file_name)
@@ -449,19 +462,19 @@ class microServiceBusHandler(BaseService):
                                 
                                 microService = MicroService(service_name.lower(), self.queue, service_config)  # (id, queue, config)
                                 asyncio.run(self.StartService(microService))
-                                asyncio.run(self.Debug(f"Loading module {module_name}"))
+                                asyncio.run(self.Debug(f"Loading module \033[93m{module_name}\033[0m"))
                             except Exception as loadEx:
                                 asyncio.run(self.ThrowError(f"Unable to load {module_name} service: Error: {loadEx}"))
-                                print(f"Unable to load {module_name}service: Error: {loadEx}")
-
+                                
                         except Exception as ex:
-                            print("Unable to start service")
+                            asyncio.run(self.ThrowError(f"Unable to start service: {ex}"))
 
             settings = self.get_settings()
             self.connection.send("signedIn", [ settings["nodeName"], socket.gethostname(), "Online", settings["organizationId"], False])
             self.send_heartbeat()
             self.signed_in = True
-            asyncio.run(self.Debug(f"Node {node_name} signed in successfully"))
+            
+            asyncio.run(self.Debug(f"\033[95mNode {node_name} signed in successfully\033[0m"))
             
         except Exception as ex:
             asyncio.run(self.Debug(f"sign_in_response error: {ex}"))
@@ -487,31 +500,47 @@ class microServiceBusHandler(BaseService):
             asyncio.run(self.Debug(f"Error in ping_response: {e}"))
     
     def connected(self):
-        self.debug_sync("Connection opened and handshake received ready to send messages")
+        asyncio.run(self.Debug("\033[95mConnected\033[0m"))
         self._connected = True
 
-        if(self._reconnect is True and "id" in self.settings):
+        if( (self._reconnect == True or self._connected == True) and "id" in self.settings):
             id = self.settings["id"]
-            self.debug_sync(f"Reconnecting: {id}")
+            self._reconnect = False
+            asyncio.run(self.Debug(f"Reconnecting: {id}"))
             self.connection.send("reconnected", [self.settings["id"]])
 
     def disconnected(self):
-        self.debug_sync("Connection closed")
+        asyncio.run(self.Debug("\033[95mDisconnected\033[0m"))
         self._connected = False
-        self._reconnect = True
+        #self._reconnect = True
 
     def reconnected(self):
-        self.debug_sync(f"Reconnected to {self.base_uri}")
+        asyncio.run(self.Debug("\033[95mReconnected\033[0m"))
+        if(self._reconnect == True):
+            # Restarting is in progress, do nothing
+            return
+    
+        asyncio.run(self.Debug("Stopping hub connection"))
+        # self.restarting = True
+        self.connection.stop()
+        self._reconnect = True
+        def func_wrapper():
+            asyncio.run(self.Debug("Restarting hub connection"))
+            self.connection.start()
 
+        t = threading.Timer(20, func_wrapper)
+        t.start()
+        asyncio.run(self.Debug("Restarting connection in 20 seconds"))
+ 
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
-            asyncio.run(self.Debug(f"MISSING HEARTBEAT"))
             missedHearbeatLimit = self.settings["policies"]["disconnectPolicy"]["missedHearbeatLimit"]
+            asyncio.run(self.Debug(f"MISSING HEARTBEAT ({self._missedheartbeat}/{missedHearbeatLimit})"))
             if self._missedheartbeat >= missedHearbeatLimit or self.signed_in == False:
                 asyncio.run(self.Debug(f"\033[93m{self._missedheartbeat} missing heartbeats exceeding limit ({missedHearbeatLimit}). Restarting process\033[0m"))
                 self.restart()
         
-        #asyncio.run(self.Debug(f"Send heatbeat"))        
+        asyncio.run(self.Debug(f"Send heatbeat"))        
         self._missedheartbeat += 1
         self.connection.send("heartBeat", ["echo"])
         asyncio.run(self.SubmitAction("*", "_heartbeat", ""))
@@ -526,6 +555,7 @@ class microServiceBusHandler(BaseService):
         try:
             connection_id = parse.parse_qs(parse.urlparse(self.connection.transport.url).query)['id'][0]
             asyncio.run(self.Debug(f"Received heatbeat => connection_id: {connection_id}"))
+
         except Exception as ex:
             asyncio.run(self.Debug(f"Received heatbeat => error: {ex}"))
 
@@ -617,6 +647,7 @@ class microServiceBusHandler(BaseService):
     
     def restart(self):
         asyncio.run(self.Debug("\033[93mRestarting node\033[0m"))
+        
         time.sleep(1)
         os.execv(sys.executable, ['python'] + sys.argv)
 
