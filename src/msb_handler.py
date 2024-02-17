@@ -785,7 +785,7 @@ class microServiceBusHandler(BaseService):
             self.connection.send("notify", [connId, message, "INFO"])
 
         except Exception as ex:
-            asyncio.run(self.ThrowError(f"Error in msb.start: {e}"))
+            asyncio.run(self.ThrowError(f"Error in msb.start: {ex}"))
     # endregion
     # region Service callbacks
     async def request_connectionstring(self, message):
