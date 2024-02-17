@@ -107,3 +107,15 @@ def check_version():
     
     except Exception as e:
         print(f"Failed to update version: {e}")
+
+def red(str):
+    return f"\033[1;31m{str}\033[0m"
+
+def green(str):
+    return f"\033[1;32m{str}\033[0m"
+
+def yellow(str):
+    return f"\033[1;33m{str}\033[0m"
+
+def purple(str):
+    return f"\033[1;95m{str}\095[0m"
