@@ -17,7 +17,7 @@ def check_version():
         # Check if directory exists
         msb_dir = f"{os.environ['HOME']}/msb-py"
         if os.path.isdir(msb_dir) == False:
-            return
+            return False
 
         print("")
         print("*********************************************")
@@ -34,7 +34,7 @@ def check_version():
                 print(f"preferedVersion: {preferedVersion}")
         else:
             print(f"{preferedVersion} does not exist")
-            return
+            return False
         
         with open(f"{currentDirectory}/package.json") as f:
             settings = json.load(f)
@@ -43,7 +43,7 @@ def check_version():
 
         if preferedVersion == "ignore":
             print("IGNORING VERSION")
-            return
+            return False
         elif preferedVersion == "latest":
             gitUri = "https://api.github.com/repos/axians/microservicebus-py/releases/latest"
             response = urllib.request.urlopen(gitUri)
@@ -62,7 +62,7 @@ def check_version():
             releases = json.loads(data.decode(encoding))
             filtered = [x for x in releases if x['tag_name'] == preferedVersion]
             if len(filtered) == 0:
-                return
+                return False
             release = releases[0]
             tarball_url = release["tarball_url"]
             response = requests.get(tarball_url, stream=True)
@@ -104,9 +104,11 @@ def check_version():
                     shutil.copyfile(f"{currentDirectory}/../src_new/{filename}", f"{currentDirectory}/{filename}")
                 #os.rename(f"{currentDirectory}/../src_new", f"{currentDirectory}")
                 print("Successfully updated")
+                return True
     
     except Exception as e:
         print(f"Failed to update version: {e}")
+        return False
 
 def red(str):
     return f"\033[1;31m{str}\033[0m"
