@@ -118,4 +118,5 @@ def yellow(str):
     return f"\033[1;33m{str}\033[0m"
 
 def purple(str):
-    return f"\033[1;95m{str}\095[0m"
+    return f"\033[95m{str}\033[0m"
+
