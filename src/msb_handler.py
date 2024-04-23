@@ -434,7 +434,7 @@ class microServiceBusHandler(BaseService):
                             file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
 
                             uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"]["isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
-                            asyncio.run(self.Debug(f"isCustom: {pythonActivity["userData"]["isCustom"]}"))
+                            #asyncio.run(self.Debug(f"isCustom: {pythonActivity["userData"]["isCustom"]}"))
                             bind_to_version = pythonActivity["userData"]["bindToVersion"]
                             script_version = pythonActivity["userData"]["version"]
 
