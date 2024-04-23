@@ -18,7 +18,7 @@ class Watchdog(BaseService):
     async def _heartbeat(self, message):
         try:
             await self.Debug("Perfoming health check")
-            internet_ok = self.internet_check()
+            internet_ok = await self.internet_check()
             file_path = "/tmp/msb.pid"
 
             with open(file_path, 'w') as watchdog_file:
