@@ -434,7 +434,7 @@ class microServiceBusHandler(BaseService):
                             file_name = pythonActivity["userData"]["type"].replace("_py", ".py")
 
                             uri = f"{self.base_uri}/api/Scripts/{organization_id}/{file_name}" if pythonActivity["userData"]["isCustom"] == True else f"{self.base_uri}/api/Scripts/00000000-0000-0000-0000-000000000001/{file_name}"
-
+                            asyncio.run(self.Debug(f"isCustom: {pythonActivity["userData"]["isCustom"]}"))
                             bind_to_version = pythonActivity["userData"]["bindToVersion"]
                             script_version = pythonActivity["userData"]["version"]
 
@@ -492,7 +492,6 @@ class microServiceBusHandler(BaseService):
 
     def ping_response(self, conn_id):
         try:
-            asyncio.run(self.Debug(f"Ping request"))
             settings = self.get_settings()
             self.connection.send("pingResponse", [ settings["nodeName"], socket.gethostname(), "Online", conn_id, False])
             asyncio.run(self.Debug("Ping response"))
