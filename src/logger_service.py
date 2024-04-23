@@ -16,13 +16,13 @@ logging.basicConfig (
 
 class Logger(BaseService):
     def __init__(self, id, queue):
-        self.debug = True
+        self.debug = False
         super(Logger, self).__init__(id, queue)
 
     async def Start(self):
-        await self.Debug("Started.")
-
         self.settings = self.get_settings()
+        self.debug = self.settings["debug"]
+        await self.Debug(f"Started. Debug: {self.debug}")
         sb_namespace = self.settings["sbNamespace"]
         trackingHubName = self.settings["trackingHubName"]
         self.tracking_uri = f"https://{sb_namespace}.servicebus.windows.net/{trackingHubName}/messages?timeout=60"

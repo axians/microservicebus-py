@@ -12,10 +12,12 @@ def getHwAddr(ifname):
     info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', bytes(ifname, 'utf-8')[:15]))
     return ':'.join('%02x' % b for b in info[18:24])
 
-def check_version():
+def check_version(msb_dir):
     try:
         # Check if directory exists
-        msb_dir = f"{os.environ['HOME']}/msb-py"
+        if(msb_dir == ""):
+            msb_dir = f"{os.environ['HOME']}/msb-py"
+        
         if os.path.isdir(msb_dir) == False:
             return False
 
