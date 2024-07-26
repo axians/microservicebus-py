@@ -1,4 +1,4 @@
-import subprocess, sys, importlib, socket, array, struct, fcntl,json, urllib.request, tarfile, requests, shutil, os
+import subprocess, sys, importlib, socket, array, struct, fcntl, json, urllib.request, tarfile, requests, shutil, os
 
 def get_public_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -16,12 +16,15 @@ def check_version(msb_dir, log):
     try:
         if (log == None):
             log = print
+        else:
+            log("Debug enabled")
 
         # Check if directory exists
         if(msb_dir == ""):
             msb_dir = f"{os.environ['HOME']}/msb-py"
         
         if( os.path.isdir(msb_dir) == False):
+            log("Installation directory does not exist")
             return False
 
         log("")
@@ -70,7 +73,8 @@ def check_version(msb_dir, log):
                 return False
             release = releases[0]
             tarball_url = release["tarball_url"]
-            response = requests.get(tarball_url, stream=True)
+            log(f"tarball_url {tarball_url}")
+            response = requests.get(tarball_url, stream=True, verify=False)
 
             if response.status_code == 200:
                 install_dir = f"{currentDirectory}/../install"
