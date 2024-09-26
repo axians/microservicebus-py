@@ -93,7 +93,14 @@ class microServiceBusHandler(BaseService):
         # Load settings file if exists
         if os.path.exists(self.msb_settings_path):
             with open(self.msb_settings_path) as f:
-                settings = json.load(f)
+                try: 
+                    settings = json.load(f)
+                except Exception as e:
+                    settings = {
+                        "hubUri": self.base_uri
+                    }
+                    self.save_settings(settings)
+                    os.execv(sys.executable, ['python'] + sys.argv)
 
         else:
             self.printf("Creating settings")
@@ -129,12 +136,12 @@ class microServiceBusHandler(BaseService):
         await self.Debug("Organization id:\033[95m " + settings["organizationId"] + "\033[0m")
         await self.Debug(f"Settings path:\033[95m {self.msb_settings_path}\033[0m")
         
-
         macAddresses = []
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
-                if snic.family == socket.AF_INET:
+                if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
                     macAddresses.append(utils.getHwAddr(interface))
+
         await self.Debug(f"Mac addresses:\033[95m {macAddresses} \033[0m")
  
         ipAddresses = []
@@ -178,7 +185,7 @@ class microServiceBusHandler(BaseService):
         macAddresses = []
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
-                if snic.family == socket.AF_INET:
+                if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
                     macAddresses.append(utils.getHwAddr(interface))
 
         
