@@ -57,14 +57,14 @@ class microServiceBusHandler(BaseService):
 
             await self.set_up_signalr()
             # If no sas key, try provision using mac address
-            sas_exists = "sas" in self.settings
-            if(sas_exists == False):
-                await self.Debug("Create node using mac address")
+            #sas_exists = "sas" in self.settings
+            # if(sas_exists == False):
+            #     await self.Debug("Create node using mac address")
 
-                await self.create_node()
+            #     await self.create_node()
 
-            else:
-                await self.sign_in(self.settings, False)
+            # else:
+            #     await self.sign_in(self.settings, False)
 
             while True:
                 await asyncio.sleep(0.1)
@@ -172,7 +172,7 @@ class microServiceBusHandler(BaseService):
             "macAddresses": macAddresses,
             "firmware": firmware
         }
-        await self.Debug("Signing in")
+        await self.Debug("Signing in...")
         # Use for debugging
         #self.connection.send("signIn", [hostData])
         self.connection.send("signInAsync", [hostData])
@@ -374,7 +374,8 @@ class microServiceBusHandler(BaseService):
             await self.ThrowError(f"Unable to start SignalR!")
             self._missedheartbeat = 100
 
-        time.sleep(2)
+        #time.sleep(2)
+        await asyncio.sleep(2)
 
         if "policies" not in self.settings:
             self.settings["policies"] = { "disconnectPolicy": { "heartbeatTimeout": 180, "missedHearbeatLimit": 3}}
@@ -386,6 +387,7 @@ class microServiceBusHandler(BaseService):
     # region SignalR callback functions
     def successful_sign_in(self, sign_in_response):
         try:
+            asyncio.run(self.Debug(f"Received sign in response"))
             node_name = sign_in_response["nodeName"]
             tag_list = sign_in_response["tags"]
             
@@ -507,6 +509,15 @@ class microServiceBusHandler(BaseService):
     
     def connected(self):
         asyncio.run(self.Debug("\033[95mConnected\033[0m"))
+        
+        sas_exists = "sas" in self.settings
+        if(sas_exists == False):
+            asyncio.run(self.Debug("Create node using mac address"))
+            asyncio.run(self.create_node())
+
+        else:
+            asyncio.run(self.sign_in(self.settings, False))
+
         self._connected = True
 
         if( (self._reconnect == True or self._connected == True) and "id" in self.settings):
@@ -519,7 +530,7 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.Debug("\033[95mDisconnected\033[0m"))
         self._connected = False
         #self._reconnect = True
-
+ 
     def reconnected(self):
         asyncio.run(self.Debug("\033[95mReconnected\033[0m"))
         if(self._reconnect == True):
@@ -537,7 +548,7 @@ class microServiceBusHandler(BaseService):
         t = threading.Timer(20, func_wrapper)
         t.start()
         asyncio.run(self.Debug("Restarting connection in 20 seconds"))
- 
+  
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
             missedHearbeatLimit = self.settings["policies"]["disconnectPolicy"]["missedHearbeatLimit"]
