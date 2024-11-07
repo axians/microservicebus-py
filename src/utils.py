@@ -30,7 +30,6 @@ async def check_version(self, msb_dir, log):
             await log("Installation directory does not exist")
             return False
 
-        log (f"current dir: {os.path.dirname(os.path.abspath(__file__))}")
         currentDirectory = os.path.dirname(os.path.abspath(__file__));
         preferedVersion = "latest"
         currentVersion = ""
