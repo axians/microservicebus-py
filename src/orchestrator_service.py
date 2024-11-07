@@ -8,6 +8,7 @@ from base_service import BaseService, CustomService
 from watchdog_service import Watchdog
 from vpn_helper import VPNHelper
 from terminal_service import Terminal
+from update_handler import UpdateHandler
 
 class Orchestrator(BaseService):
     def __init__(self, id, queue):
@@ -39,6 +40,8 @@ class Orchestrator(BaseService):
         await self.StartService(vpnHelper)
         terminal = Terminal("terminal", self.queue)
         await self.StartService(terminal)
+        updateHandler = UpdateHandler("updatehandler", self.queue)
+        await self.StartService(updateHandler)
 
         # region
         text = """\033[92m
