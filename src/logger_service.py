@@ -44,6 +44,11 @@ class Logger(BaseService):
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
     
+    async def _warning(self, message):
+       logging.warning(f"[{message.source}] {bcolors.WARNING}WARNING:{bcolors.ENDC} {message.message[0]}")
+       if self.debug:
+           await self.SubmitAction("msb", "_debug", message.message[0])
+
     async def _error(self, message):
        logging.error(f"[{message.source}] {bcolors.FAIL}ERROR:{bcolors.ENDC} {message.message[0]}")
        await self._track(message)

@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from packaging import version
 from urllib import parse
+from datetime import datetime
 import asyncio, importlib, pathlib, uuid, re, sys, traceback, socket, requests, os, json, psutil
 import platform, time, logging, glob, urllib. request, threading, utils, ssl
 
@@ -161,6 +162,7 @@ class microServiceBusHandler(BaseService):
 
         hostData = {
             "id": "",
+            "timestamp": datetime.now().isoformat(),
             "connectionId": "",
             "Name": settings["nodeName"],
             "machineName": socket.gethostname(),
@@ -496,7 +498,7 @@ class microServiceBusHandler(BaseService):
         #self.restart()
 
     def not_implemented(self, event_handler):
-        asyncio.run(self.ThrowError(
+        asyncio.run(self.Warning(
             f'SignalR event handler \033[93m"{event_handler}"\033[0m is not implemented in the Python Node'))
 
     def ping_response(self, conn_id):
@@ -552,16 +554,28 @@ class microServiceBusHandler(BaseService):
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
             missedHearbeatLimit = self.settings["policies"]["disconnectPolicy"]["missedHearbeatLimit"]
-            asyncio.run(self.Debug(f"MISSING HEARTBEAT ({self._missedheartbeat}/{missedHearbeatLimit})"))
+            try:
+                asyncio.run(self.Debug(f"MISSING HEARTBEAT ({self._missedheartbeat}/{missedHearbeatLimit})"))
+            except Exception as ex:
+                pass
+
             if self._missedheartbeat >= missedHearbeatLimit or self.signed_in == False:
-                asyncio.run(self.Debug(f"\033[93m{self._missedheartbeat} missing heartbeats exceeding limit ({missedHearbeatLimit}). Restarting process\033[0m"))
+                try:
+                    asyncio.run(self.Debug(f"\033[93m{self._missedheartbeat} missing heartbeats exceeding limit ({missedHearbeatLimit}). Restarting process\033[0m"))
+                except Exception as ex:
+                    pass
+                
                 self.restart()
         
-        asyncio.run(self.Debug(f"Send heatbeat"))        
         self._missedheartbeat += 1
-        self.connection.send("heartBeat", ["echo"])
-        asyncio.run(self.SubmitAction("*", "_heartbeat", ""))
-    
+
+        try:
+            asyncio.run(self.Debug(f"Send heatbeat"))        
+            self.connection.send("heartBeat", ["echo"])
+            asyncio.run(self.SubmitAction("*", "_heartbeat", ""))
+        except Exception as ex:
+                print(f"Error in send_heartbeat: {ex}")
+
     def receive_heartbeat(self, message):
         if self.signed_in == False:
             asyncio.run(self.Debug(f"Received heatbeat but node has not successfully logged in yet"))

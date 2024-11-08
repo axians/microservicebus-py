@@ -103,6 +103,11 @@ class BaseService:
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 
+    async def Warning(self, message):
+        msg = QueueMessage(self.id, "logger", "_warning", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
     async def ThrowError(self, message, fault_code = None, fault_description = None):
         if isinstance(message,dict):
             if(fault_code != None):
