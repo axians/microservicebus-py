@@ -517,7 +517,7 @@ class microServiceBusHandler(BaseService):
             asyncio.run(self.Debug("Create node using mac address"))
             asyncio.run(self.create_node())
 
-        else:
+        elif self.signed_in == False:
             asyncio.run(self.sign_in(self.settings, False))
 
         self._connected = True
@@ -535,21 +535,21 @@ class microServiceBusHandler(BaseService):
  
     def reconnected(self):
         asyncio.run(self.Debug("\033[95mReconnected\033[0m"))
-        if(self._reconnect == True):
-            # Restarting is in progress, do nothing
-            return
+        # if(self._reconnect == True):
+        #     # Restarting is in progress, do nothing
+        #     return
     
-        asyncio.run(self.Debug("Stopping hub connection"))
-        # self.restarting = True
-        self.connection.stop()
-        self._reconnect = True
-        def func_wrapper():
-            asyncio.run(self.Debug("Restarting hub connection"))
-            self.connection.start()
+        # asyncio.run(self.Debug("Stopping hub connection"))
+        # # self.restarting = True
+        # self.connection.stop()
+        # self._reconnect = True
+        # def func_wrapper():
+        #     asyncio.run(self.Debug("Restarting hub connection"))
+        #     self.connection.start()
 
-        t = threading.Timer(20, func_wrapper)
-        t.start()
-        asyncio.run(self.Debug("Restarting connection in 20 seconds"))
+        # t = threading.Timer(20, func_wrapper)
+        # t.start()
+        # asyncio.run(self.Debug("Restarting connection in 20 seconds"))
   
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
