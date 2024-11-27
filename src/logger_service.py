@@ -1,18 +1,24 @@
 import asyncio, logging, uuid, json, base64
 from logging.handlers import RotatingFileHandler
 from base_service import BaseService
-# from urllib.error import HTTPError, URLError
-# from urllib.request import urlopen, Request
-# from urllib.parse import urlencode
 from urllib import request
 from datetime import datetime
+import platform
 
+if platform.system() == "Linux":
+    log_path = '/var/log/microservicebus-py.log'
+elif platform.system() == "Windows":
+    log_path = 'c:\\temp\\msb-py\\microservicebus-py.log'
+
+print (f"Log path: {log_path}")
 logging.basicConfig (
-    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
+    handlers=[RotatingFileHandler(log_path, maxBytes=100000, backupCount=7)],
     format='%(asctime)s: %(message)s',
     encoding='utf-8',
     level=logging.WARNING
 )
+
+# logging.basicConfig (handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],format='%(asctime)s: %(message)s', encoding='utf-8',level=logging.WARNING)
 
 class Logger(BaseService):
     def __init__(self, id, queue):

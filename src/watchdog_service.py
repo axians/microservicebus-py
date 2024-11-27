@@ -1,4 +1,4 @@
-import asyncio, threading, datetime, os
+import asyncio, threading, datetime, os, platform
 import time
 from base_service import BaseService
 from urllib import request
@@ -13,7 +13,12 @@ class Watchdog(BaseService):
         await self.Debug("Started.")
         self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
         self.settings = self.get_settings()
-        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+
+        if platform.system() == "Linux":
+            self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        elif platform.system() == "Windows":
+            home = str(Path.home())
+            self.msb_dir = f"{home}\\msb-py"
 
     async def _heartbeat(self, message):
         try:

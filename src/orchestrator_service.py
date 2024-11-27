@@ -2,13 +2,16 @@ import asyncio
 import signal
 import os
 import urllib3
+import platform
 from logger_service import Logger
 from msb_handler import microServiceBusHandler
 from base_service import BaseService, CustomService
 from watchdog_service import Watchdog
 from vpn_helper import VPNHelper
-from terminal_service import Terminal
 from update_handler import UpdateHandler
+
+if platform.system() == "Linux":
+    from terminal_service import Terminal
 
 class Orchestrator(BaseService):
     def __init__(self, id, queue):
@@ -38,11 +41,13 @@ class Orchestrator(BaseService):
         await self.StartService(wachdog)
         vpnHelper = VPNHelper("vpnhelper", self.queue)
         await self.StartService(vpnHelper)
-        terminal = Terminal("terminal", self.queue)
-        await self.StartService(terminal)
         updateHandler = UpdateHandler("updatehandler", self.queue)
         await self.StartService(updateHandler)
 
+        if platform.system() == "Linux":
+            terminal = Terminal("terminal", self.queue)
+            await self.StartService(terminal)
+        
         # region
         text = """\033[92m
            _               ____                  _          ____             

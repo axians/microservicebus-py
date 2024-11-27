@@ -1,4 +1,9 @@
-import subprocess, sys, importlib, socket, array, struct, fcntl, json, urllib.request, tarfile, requests, shutil, os
+import subprocess, sys, importlib, socket, array, struct, json, urllib.request, tarfile, requests, shutil, os
+from sys import platform
+from pathlib import Path
+
+if platform == "linux" or platform == "linux2":
+    import fcntl
 
 def get_public_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -8,10 +13,20 @@ def get_public_ip():
     return ip
 
 def getHwAddr(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', bytes(ifname, 'utf-8')[:15]))
-    return ':'.join('%02x' % b for b in info[18:24])
-
+    try:
+        if platform == "linux" or platform == "linux2":
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', bytes(ifname, 'utf-8')[:15]))
+            return ':'.join('%02x' % b for b in info[18:24])
+        elif platform == "win32":
+            from uuid import getnode as get_mac
+            mac = get_mac()
+            mac_address = hex(mac)[2:]
+            mac_address = ':'.join(mac_address[i:i+2] for i in range(0, len(mac_address), 2))
+            return mac_address
+    except Exception as e:
+        return "00:00:00:00:00:00"
+    
 async def debug(self, msg):
     print(msg)
 
@@ -24,7 +39,12 @@ async def check_version(self, msb_dir, log):
 
         # Check if directory exists
         if(msb_dir == ""):
-            msb_dir = f"{os.environ['HOME']}/msb-py"
+            if platform.system() == "Linux":
+                msb_dir = f"{os.environ['HOME']}/msb-py"
+            elif platform.system() == "Windows":
+                home = str(Path.home())
+                msb_dir = f"{home}/msb-py"
+
         
         if( os.path.isdir(msb_dir) == False):
             await log("Installation directory does not exist")

@@ -10,8 +10,13 @@ import platform, time, logging, glob, urllib. request, threading, utils, ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+if platform.system() == "Linux":
+    log_path = '/var/log/microservicebus-py.log'
+elif platform.system() == "Windows":
+    log_path = 'c:\\temp\\msb-py\\microservicebus-py.log'
+
 logging.basicConfig (
-    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
+    handlers=[RotatingFileHandler(log_path, maxBytes=100000, backupCount=7)],
     format='%(asctime)s: %(message)s',
     encoding='utf-8',
     level=logging.WARNING
@@ -29,8 +34,11 @@ class microServiceBusHandler(BaseService):
 
         self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
                 
-        home = str(Path.home())
-        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        if platform.system() == "Linux":
+            self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        elif platform.system() == "Windows":
+            home = str(Path.home())
+            self.msb_dir = f"{home}\\msb-py"
         
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
@@ -141,7 +149,8 @@ class microServiceBusHandler(BaseService):
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
-                    macAddresses.append(utils.getHwAddr(interface))
+                    macAddress = utils.getHwAddr(interface);
+                    macAddresses.append(macAddress) if macAddress not in macAddresses else macAddresses
 
         await self.Debug(f"Mac addresses:\033[95m {macAddresses} \033[0m")
  
@@ -188,9 +197,9 @@ class microServiceBusHandler(BaseService):
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
-                    macAddresses.append(utils.getHwAddr(interface))
-
-        
+                    macAddress = utils.getHwAddr(interface);
+                    macAddresses.append(macAddress) if macAddress not in macAddresses else macAddresses
+                
         await self.Debug(macAddresses)
         request = {
             "hostName" :socket.gethostname(),
