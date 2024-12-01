@@ -13,7 +13,10 @@ ssl._create_default_https_context = ssl._create_unverified_context
 if platform.system() == "Linux":
     log_path = '/var/log/microservicebus-py.log'
 elif platform.system() == "Windows":
-    log_path = 'c:\\temp\\msb-py\\microservicebus-py.log'
+    home = str(Path.home())
+    msb_dir = f"{home}\\msb-py\\logging"
+    Path(msb_dir).mkdir(parents=True, exist_ok=True)
+    log_path = f"{msb_dir}\\microservicebus-py.log"
 
 logging.basicConfig (
     handlers=[RotatingFileHandler(log_path, maxBytes=100000, backupCount=7)],

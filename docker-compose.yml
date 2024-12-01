@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  p1:
+    image: msb-py
+    entrypoint: python3 ./src/start.py
+  p2:
+    image: msb-py
+    entrypoint: python3 ./src/start.py
+  p3:
+    image: msb-py
+    entrypoint: python3 ./src/start.py
+  p4:
+    image: msb-py
+    entrypoint: python3 ./src/start.py
+  p5:
+    image: msb-py
+    entrypoint: python3 ./src/start.py
