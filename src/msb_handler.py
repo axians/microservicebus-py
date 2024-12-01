@@ -171,7 +171,7 @@ class microServiceBusHandler(BaseService):
             firmware = self.settings["firmware"]
         except Exception:
             pass
-
+        
         hostData = {
             "id": "",
             "timestamp": datetime.now().isoformat(),
@@ -184,7 +184,8 @@ class microServiceBusHandler(BaseService):
             "ipAddresses": ipAddresses,
             "recoveredSignIn": "False",
             "macAddresses": macAddresses,
-            "firmware": firmware
+            "firmware": firmware,
+            "Platform": platform.system() if platform.system() == "Linux" else "win32",
         }
         await self.Debug("Signing in...")
         # Use for debugging
@@ -802,6 +803,10 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.SubmitAction("vpnhelper", "get_vpn_settings_response", message))
     
     def start_terminal(self, connectionId, user):
+        if platform.system() == "Windows":
+            self.connection.send("notify", [connectionId, "Remote terminal is not available for the Python agent on Windows hosts", "WARNING"])
+            return
+        
         message = {
             'connectionId': connectionId,
             'user': user

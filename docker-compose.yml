@@ -4,15 +4,25 @@ services:
   p1:
     image: msb-py
     entrypoint: python3 ./src/start.py
+    volumes:
+      - ./docker/p1:/root/msb-py
   p2:
     image: msb-py
     entrypoint: python3 ./src/start.py
+    volumes:
+      - ./docker/p2:/root/msb-py
   p3:
     image: msb-py
     entrypoint: python3 ./src/start.py
+    volumes:
+      - ./docker/p3:/root/msb-py
   p4:
     image: msb-py
     entrypoint: python3 ./src/start.py
+    volumes:
+      - ./docker/p4:/root/msb-py
   p5:
     image: msb-py
     entrypoint: python3 ./src/start.py
+    volumes:
+      - ./docker/p5:/root/msb-py
