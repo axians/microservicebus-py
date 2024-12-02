@@ -3,26 +3,32 @@ version: '3'
 services:
   p1:
     image: msb-py
+    hostname: p1
     entrypoint: python3 ./src/start.py
     volumes:
       - ./docker/p1:/root/msb-py
+          
   p2:
     image: msb-py
+    hostname: p2
     entrypoint: python3 ./src/start.py
     volumes:
       - ./docker/p2:/root/msb-py
   p3:
     image: msb-py
+    hostname: p3
     entrypoint: python3 ./src/start.py
     volumes:
       - ./docker/p3:/root/msb-py
   p4:
     image: msb-py
+    hostname: p4
     entrypoint: python3 ./src/start.py
     volumes:
       - ./docker/p4:/root/msb-py
   p5:
     image: msb-py
+    hostname: p5
     entrypoint: python3 ./src/start.py
     volumes:
       - ./docker/p5:/root/msb-py
