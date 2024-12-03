@@ -149,3 +149,46 @@ def yellow(str):
 def purple(str):
     return f"\033[95m{str}\033[0m"
 
+async def upload_to_blob_storage(self, storage_account, storage_key, container_name, file_path):
+        try:
+            from datetime import datetime, timedelta, timezone
+            ContainerClient = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "ContainerClient")
+            ResourceTypes = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "ResourceTypes")
+            AccountSasPermissions = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "AccountSasPermissions")
+            BlobSasPermissions = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "BlobSasPermissions")
+            generate_account_sas = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "generate_account_sas")
+            generate_blob_sas = self.AddPipPackage("azure-storage-blob", "azure.storage.blob", "generate_blob_sas")
+            account_url = f"https://{storage_account}.blob.core.windows.net"
+            file_name = os.path.basename(file_path)
+
+            sas_token = generate_account_sas(
+                account_name=storage_account,
+                account_key=storage_key,
+                resource_types=ResourceTypes(service=True, container=True, object=True),
+                permission=AccountSasPermissions(read=True, create=True, write=True, delete=True, list=True),
+                expiry=datetime.utcnow() + timedelta(hours=1)
+            )
+            blob_container_client = ContainerClient(account_url=account_url, container_name=container_name, credential=sas_token)
+            try:
+                await blob_container_client.create_container()
+            except Exception:
+                pass
+
+            blob_client = blob_container_client.get_blob_client(file_name)
+            
+            with open(file_path, "rb") as data:
+                blob_client.upload_blob(data, overwrite=True)
+
+            blob_sas_token = generate_blob_sas(
+                account_name=storage_account,
+                container_name=container_name,
+                blob_name=file_name,
+                account_key=storage_key,
+                permission=BlobSasPermissions(read=True, write=True),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1)
+            )
+            sas_url = f"https://{storage_account}.blob.core.windows.net/{container_name}/{file_name}?{blob_sas_token}"
+            #sas_url = f"{blob_container_client.url}/{file_name}?{blob_sas_token}"
+            return sas_url
+        except Exception as ex:
+            return
