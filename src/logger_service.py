@@ -1,18 +1,9 @@
 import asyncio, logging, uuid, json, base64
 from logging.handlers import RotatingFileHandler
 from base_service import BaseService
-# from urllib.error import HTTPError, URLError
-# from urllib.request import urlopen, Request
-# from urllib.parse import urlencode
 from urllib import request
 from datetime import datetime
-
-logging.basicConfig (
-    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
-    format='%(asctime)s: %(message)s',
-    encoding='utf-8',
-    level=logging.WARNING
-)
+import platform
 
 class Logger(BaseService):
     def __init__(self, id, queue):
@@ -34,7 +25,6 @@ class Logger(BaseService):
     
     async def StateUpdate(self, message):
         state = message.message[0]
-        #await self.Debug(f"Received: {message}")
 
     async def _change_debug(self, message):
         self.debug = message.message[0]

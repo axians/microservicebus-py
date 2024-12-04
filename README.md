@@ -75,3 +75,34 @@ await self.SubmitAction('MyOtherService', 'Process', message)
 ### StateUpdate
 
 State updates received by the _Com_ service are forwarded to all services and accessible through the StateUpdate function
+
+## Testing using Docker
+To get started with Docker on Windows, follow the [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/) guideline.
+
+There is a `Dockerfile` in the root directory which can be used to build a docker image (from the root of the repo):
+
+```bash
+docker build -t msb-py .
+```
+
+You can start the image using:
+
+```bash
+docker run -v ${PWD}:/app -it python bash
+```
+*This start an instance of the Python agent which you can claim in the portal.*
+
+There is also a *Docker Compose* file you can use to start up multiple instances at once. This creates 5 instances, all mapping `/root/msb-py` to `[REPO Root]/docker/[container]`. So before you start, create a `docker` folder in the repo root with 5 folders inside (p1, p2, p3, p4, p5).
+
+Once you've set up the folder structure, you can start it using:
+
+```bash
+docker compose up -d
+```
+or stop it using 
+
+```bash
+docker compose down
+```
+
+You'll still have to claim the nodes when they come online, but only the first time.

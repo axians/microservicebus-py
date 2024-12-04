@@ -4,15 +4,22 @@ import asyncio
 import subprocess
 import importlib
 import requests
+import platform
+from pathlib import Path
 from queue_message import QueueMessage
-
 
 class BaseService:
     def __init__(self, id, queue):
         self.id = id
         self.queue = queue
         self.task = None
-        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+
+        if platform.system() == "Linux":
+            self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        elif platform.system() == "Windows":
+            home = str(Path.home())
+            self.msb_dir = f"{home}\\msb-py"
+
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
 
     def printf(self, msg):

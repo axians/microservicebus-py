@@ -3,13 +3,17 @@ from base_service import BaseService
 import pty
 import subprocess
 import struct
-import fcntl
+
 import select
 import os
 import termios
 import time
 import threading
 import signal
+from sys import platform
+
+if platform == "linux" or platform == "linux2":
+    import fcntl
 
 fd = None
 child_pid = None
@@ -97,5 +101,6 @@ class Terminal(BaseService):
                 return 
 
     def set_winsize(self, fd, row, col, xpix=0, ypix=0):
-        winsize = struct.pack("HHHH", row, col, xpix, ypix)
-        fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+        if platform == "linux" or platform == "linux2":
+            winsize = struct.pack("HHHH", row, col, xpix, ypix)
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
