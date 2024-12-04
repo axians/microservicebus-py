@@ -31,44 +31,59 @@ async def debug(self, msg):
     print(msg)
 
 async def check_version(self, msb_dir, log):
+    """
+    Check and update the version of the microservicebus-py.
+
+    Args:
+        msb_dir (str): The directory where MSB is installed.
+        log (function): The logging function to use for logging messages.
+
+    Returns:
+        bool: True if the version was updated, False otherwise.
+    """
     try:
-        if (log == None):
-            log = self.debug
+        if log is None:
+            log = self.debug  # Use the debug log if no log function is provided
         else:
             await log("Debug enabled")
 
-        # Check if directory exists
-        if(msb_dir == ""):
+        # Check if the directory is provided, if not, set it based on the OS
+        if msb_dir == "":
             if platform.system() == "Linux":
                 msb_dir = f"{os.environ['HOME']}/msb-py"
             elif platform.system() == "Windows":
                 home = str(Path.home())
                 msb_dir = f"{home}/msb-py"
 
-        
-        if( os.path.isdir(msb_dir) == False):
+        # Check if the MSB directory exists
+        if not os.path.isdir(msb_dir):
             await log("Installation directory does not exist")
             return False
 
-        currentDirectory = os.path.dirname(os.path.abspath(__file__));
+        currentDirectory = os.path.dirname(os.path.abspath(__file__))
         preferedVersion = "latest"
         currentVersion = ""
         msb_settings_path = f"{msb_dir}/settings.json"
         await log(f"msb_settings_path: {msb_settings_path}")
+
+        # Load settings from the settings file if it exists
         if os.path.exists(msb_settings_path):
             with open(msb_settings_path) as f:
                 settings = json.load(f)
                 preferedVersion = settings["coreVersion"]
+                preferedVersion = settings["pythonVersion"]
                 await log(f"preferedVersion: {preferedVersion}")
         else:
             await log(f"{preferedVersion} does not exist")
             return False
-        
+
+        # Load the current version from the package.json file
         with open(f"{currentDirectory}/package.json") as f:
             settings = json.load(f)
             currentVersion = settings["version"]
             await log(f"currentVersion: {currentVersion}")
 
+        # Determine the preferred version to update to
         if preferedVersion == "ignore":
             await log("IGNORING VERSION")
             return False
@@ -80,7 +95,21 @@ async def check_version(self, msb_dir, log):
             latest_release = json.loads(data.decode(encoding))
             preferedVersion = latest_release["tag_name"]
             await log(f"preferedVersion: {preferedVersion}")
-        
+        elif preferedVersion == "beta":
+            gitUri = "https://api.github.com/repos/axians/microservicebus-py/releases"
+            response = urllib.request.urlopen(gitUri)
+            data = response.read()
+            encoding = response.info().get_content_charset('utf-8')
+            releases = json.loads(data.decode(encoding))
+            pre_releases = [x for x in releases if x['prerelease'] == True]
+            pre_releases.sort(key=lambda x: x['published_at'], reverse=True)
+            if len(pre_releases) == 0:
+                return False
+
+            preferedVersion = pre_releases[0]["tag_name"]
+            await log(f"preferedVersion: {preferedVersion}")
+
+        # If the preferred version is different from the current version, update
         if preferedVersion != currentVersion:
             await log(f"Updating from {currentVersion} to {preferedVersion}")
             gitUri = f"https://api.github.com/repos/axians/microservicebus-py/releases"
@@ -106,7 +135,7 @@ async def check_version(self, msb_dir, log):
                 tar_file.extractall(path=install_dir)
                 top_directory = os.listdir(install_dir)[0]
                 await log(f"top_directory: {top_directory}")
-                
+
                 src_directory = f"{install_dir}/{top_directory}/src"
                 dest_directory = f"{currentDirectory}/../src_new/"
                 await log(f"src_directory: {src_directory}")
@@ -121,7 +150,7 @@ async def check_version(self, msb_dir, log):
                 if os.path.exists(f"{currentDirectory}/../src_old"):
                     shutil.rmtree(f"{currentDirectory}/../src_old")
                     await log("Removed src_old directory")
-                
+
                 shutil.copytree(f"{currentDirectory}", f"{currentDirectory}/../src_old")
                 for filename in os.listdir(currentDirectory):
                     await log(f"\tRemoving {filename}")
@@ -132,7 +161,7 @@ async def check_version(self, msb_dir, log):
                     shutil.copyfile(f"{currentDirectory}/../src_new/{filename}", f"{currentDirectory}/{filename}")
                 await log("Successfully updated")
                 return True
-    
+
     except Exception as e:
         await log(f"Failed to update version: {e}")
         return False

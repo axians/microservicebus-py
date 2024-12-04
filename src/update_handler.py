@@ -1,7 +1,8 @@
-import sys, os, json
+import sys, os, json, platform
 import subprocess
 import asyncio
 import urllib.request
+from pathlib import Path
 from xmlrpc.client import Server
 from base_service import BaseService
 
@@ -59,7 +60,13 @@ class UpdateHandler(BaseService):
                 await self.Debug(f"Version requirements are met. Proceeding with checking version")
 
             import utils
-            msb_dir = f"{os.environ['HOME']}msb-py"
+            if platform.system() == "Linux":
+                msb_dir = f"{os.environ['HOME']}/msb-py"
+            elif platform.system() == "Windows":
+                home = str(Path.home())
+                msb_dir = f"{home}\\msb-py"
+            
+            #msb_dir = f"{os.environ['HOME']}msb-py"
             await self.Debug(f"msb_dir: {msb_dir}")
 
             updated = await utils.check_version(self, msb_dir, self.Debug)
