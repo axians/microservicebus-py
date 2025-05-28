@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, sys, traceback
 import signal
 import os
 import urllib3
@@ -148,9 +148,25 @@ class Orchestrator(BaseService):
         await self.Debug(f"Running {len(self.services)-len(customServices)} services")
 
     def service_completed(self, fn):
-        self.printf("*************************")
-        self.printf(f"{fn.get_name()} stopped")
-        self.printf("*************************")
+        # self.printf("*************************")
+        # self.printf(f"{fn.get_name()} stopped")
+        # self.printf("*************************")
+        if fn.exception():
+            task_name = fn.get_name()
+            service_name = task_name.split(" : ")[-1]
+            exception = fn.exception()
+            tb = ''.join(traceback.format_exception(None, exception, exception.__traceback__))
+        
+            asyncio.ensure_future(self.ThrowError(f"Unhandled exception in {service_name}: {exception} {tb}"))
+            asyncio.ensure_future(self.Warning(f"{fn.get_name()} stopped"))
+            msg = {
+                "fault_code": "90000",
+                "fault_description": f"Unhandled exception in {service_name}",
+                "source": service_name,
+                "description": str(exception),
+                "callstack": tb
+            }
+            asyncio.ensure_future(self.Track(msg))
 
     async def shutdown(self, signal, loop, *args):
         self.printf("")
