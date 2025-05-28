@@ -70,7 +70,6 @@ async def check_version(self, msb_dir, log):
         if os.path.exists(msb_settings_path):
             with open(msb_settings_path) as f:
                 settings = json.load(f)
-                preferedVersion = settings["coreVersion"]
                 preferedVersion = settings["pythonVersion"]
                 await log(f"preferedVersion: {preferedVersion}")
         else:
