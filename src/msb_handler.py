@@ -6,12 +6,20 @@ from packaging import version
 from urllib import parse
 from datetime import datetime
 import asyncio, importlib, pathlib, uuid, re, sys, traceback, socket, requests, os, json, psutil
-import platform, time, logging, glob, urllib. request, threading, utils, ssl
+import platform, time, logging, glob, urllib.request, threading, utils, ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+if platform.system() == "Linux":
+    log_path = '/var/log/microservicebus-py.log'
+elif platform.system() == "Windows":
+    home = str(Path.home())
+    msb_dir = f"{home}\\msb-py\\logging"
+    Path(msb_dir).mkdir(parents=True, exist_ok=True)
+    log_path = f"{msb_dir}\\microservicebus-py.log"
+
 logging.basicConfig (
-    handlers=[RotatingFileHandler('/var/log/microservicebus-py.log', maxBytes=100000, backupCount=7)],
+    handlers=[RotatingFileHandler(log_path, maxBytes=100000, backupCount=7)],
     format='%(asctime)s: %(message)s',
     encoding='utf-8',
     level=logging.WARNING
@@ -29,8 +37,11 @@ class microServiceBusHandler(BaseService):
 
         self.base_uri = os.getenv('MSB_HOST') if os.getenv('MSB_HOST') != None else "https://microservicebus.com"
                 
-        home = str(Path.home())
-        self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        if platform.system() == "Linux":
+            self.msb_dir = f"{os.environ['HOME']}/msb-py"
+        elif platform.system() == "Windows":
+            home = str(Path.home())
+            self.msb_dir = f"{home}\\msb-py"
         
         self.service_path = f"{self.msb_dir}/services"
         self.msb_settings_path = f"{self.msb_dir}/settings.json"
@@ -57,16 +68,7 @@ class microServiceBusHandler(BaseService):
             await self.Debug(f"instance: {self.base_uri}")
 
             await self.set_up_signalr()
-            # If no sas key, try provision using mac address
-            #sas_exists = "sas" in self.settings
-            # if(sas_exists == False):
-            #     await self.Debug("Create node using mac address")
-
-            #     await self.create_node()
-
-            # else:
-            #     await self.sign_in(self.settings, False)
-
+           
             while True:
                 await asyncio.sleep(0.1)
         except Exception as e:
@@ -141,7 +143,8 @@ class microServiceBusHandler(BaseService):
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
-                    macAddresses.append(utils.getHwAddr(interface))
+                    macAddress = utils.getHwAddr(interface);
+                    macAddresses.append(macAddress) if macAddress not in macAddresses else macAddresses
 
         await self.Debug(f"Mac addresses:\033[95m {macAddresses} \033[0m")
  
@@ -159,7 +162,7 @@ class microServiceBusHandler(BaseService):
             firmware = self.settings["firmware"]
         except Exception:
             pass
-
+        
         hostData = {
             "id": "",
             "timestamp": datetime.now().isoformat(),
@@ -172,7 +175,8 @@ class microServiceBusHandler(BaseService):
             "ipAddresses": ipAddresses,
             "recoveredSignIn": "False",
             "macAddresses": macAddresses,
-            "firmware": firmware
+            "firmware": firmware,
+            "Platform": platform.system() if platform.system() == "Linux" else "win32",
         }
         await self.Debug("Signing in...")
         # Use for debugging
@@ -188,9 +192,9 @@ class microServiceBusHandler(BaseService):
         for interface, snics in psutil.net_if_addrs().items():
             for snic in snics:
                 if snic.family == socket.AF_INET and utils.getHwAddr(interface) != "00:00:00:00:00:00":
-                    macAddresses.append(utils.getHwAddr(interface))
-
-        
+                    macAddress = utils.getHwAddr(interface);
+                    macAddresses.append(macAddress) if macAddress not in macAddresses else macAddresses
+                
         await self.Debug(macAddresses)
         request = {
             "hostName" :socket.gethostname(),
@@ -327,8 +331,7 @@ class microServiceBusHandler(BaseService):
             "updateFlowState", lambda response: self.not_implemented("updateFlowState"))
         self.connection.on(
             "enableDebug", lambda response: self.not_implemented("enableDebug"))
-        self.connection.on(
-            "uploadSyslogs", lambda response: self.not_implemented("uploadSyslogs"))
+        self.connection.on("uploadSyslogs", lambda response: self.not_implemented("uploadSyslogs"))
         self.connection.on(
             "resendHistory", lambda response: self.not_implemented("resendHistory"))
         self.connection.on(
@@ -368,7 +371,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "dockerComposeDown", lambda response: self.not_implemented("dockerComposeDown"))
         self.connection.on(
-            "uploadFile", lambda response: self.not_implemented("uploadFile"))
+            "uploadFile", lambda args: self.upload_file(args[0]))
         # endregion
         try:
             self.connection.start()
@@ -650,7 +653,7 @@ class microServiceBusHandler(BaseService):
                 "speed": None,
                 "times": {
                     "user": cpu_times.user,
-                    "nice": cpu_times.nice,
+                    "nice": 0,#cpu_times.nice,
                     "sys": cpu_times.system,
                     "idle": cpu_times.idle
                 }
@@ -790,6 +793,10 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.SubmitAction("vpnhelper", "get_vpn_settings_response", message))
     
     def start_terminal(self, connectionId, user):
+        if platform.system() == "Windows":
+            self.connection.send("notify", [connectionId, "Remote terminal is not available for the Python agent on Windows hosts", "WARNING"])
+            return
+        
         message = {
             'connectionId': connectionId,
             'user': user
@@ -810,13 +817,30 @@ class microServiceBusHandler(BaseService):
             connId = request["connId"]
             node_name = self.settings["nodeName"]
             asyncio.run(self.Debug(f"downloading file ({file_name}) to {directory}"))
-            urllib.request.urlretrieve(uri, f"/{directory}/{file_name}")
+            urllib.request.urlretrieve(uri, f"{directory}/{file_name}")
             asyncio.run(self.Debug(f"download complete"))
             message = f"{file_name} has successfully been saved in ${directory} on ${node_name}."
             self.connection.send("notify", [connId, message, "INFO"])
 
         except Exception as ex:
             asyncio.run(self.ThrowError(f"Error in msb.start: {ex}"))
+    
+    def upload_file(self, request):
+        organizationId = self.settings["organizationId"]
+        file_path = request["file"]
+        connection_id = request["connId"]
+        storage_account = request["account"]
+        storage_key = request["accountKey"]
+        container_name = request["containerName"]
+        file_name = os.path.basename(file_path)
+        try:
+            url = asyncio.run(utils.upload_to_blob_storage(self, storage_account, storage_key,container_name, file_path))
+            self.connection.send('downloadResponse', [connection_id, url, file_name])
+            self.connection.send('notify', [connection_id, f'Uploaded {file_name}', 'INFO'])
+        except Exception as ex:
+            asyncio.run(self.ThrowError(f"Error in msb.upload_sys_logs: {ex}"))
+            return
+        asyncio.run(self.Debug(f"Uploading syslogs"))
     # endregion
     # region Service callbacks
     async def request_connectionstring(self, message):
