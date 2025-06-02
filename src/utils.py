@@ -120,7 +120,8 @@ async def check_version(self, msb_dir, log):
             if len(filtered) == 0:
                 return False
             release = releases[0]
-            tarball_url = release["tarball_url"]
+            tarball_url = filtered["tarball_url"]
+            
             await log(f"tarball_url {tarball_url}")
             response = requests.get(tarball_url, stream=True, verify=False)
 
