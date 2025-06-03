@@ -119,8 +119,8 @@ async def check_version(self, msb_dir, log):
             filtered = [x for x in releases if x['tag_name'] == preferedVersion]
             if len(filtered) == 0:
                 return False
-            release = releases[0]
-            tarball_url = filtered["tarball_url"]
+            release = filtered[0]
+            tarball_url = release["tarball_url"]
             
             await log(f"tarball_url {tarball_url}")
             response = requests.get(tarball_url, stream=True, verify=False)
