@@ -600,7 +600,24 @@ class microServiceBusHandler(BaseService):
         
         time.sleep(1)
 
-        if len(message) > 1 and message[1] == 9: #Secret is not valid        
+        # create_node_invalid_request = 1,
+        # create_node_invalid_code = 2,
+        # create_node_not_found_in_whitelist = 3,
+        # create_node_unable_to_create_from_whitelist = 4,
+        # organization_not_found = 5,
+        # node_not_found_in_organization = 6,
+        # node_locked = 7,
+        # nodekey_not_found = 8,
+        # secret_not_valid = 9,
+        # unable_to_generate_sas_token = 10,
+        # create_node_from_whitelist_locked = 11,
+        # npm_version_not_suported = 12,
+        # iot_hub_provider_not_supported = 13,
+        # unable_to_get_iothub_connection = 14,
+        # aws_unable_to_attach_thing = 100,
+        # host_provider_not_supported = 101,
+
+        if len(message) > 1 and (message[1] == 9 or message[1] == 6 or message[1] == 5 or message[1] == 10 or message[1] == 2 or message[1] == 3):        
             settings = {
                 "hubUri": self.base_uri
             }
