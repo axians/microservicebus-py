@@ -30,7 +30,7 @@ class Watchdog(BaseService):
                 watchdog_file.write(str(int(time.time())))
 
         except Exception as err: 
-            await self.ThrowError(f"Faild to write to watchdog file: {err}")
+            await self.ThrowError(f"Failed to write to watchdog file: {err}")
         
     async def internet_check(self):
         try:
