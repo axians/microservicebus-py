@@ -309,7 +309,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on("stopTerminal", lambda args: self.stop_terminal())
         self.connection.on("terminalCommand", lambda args: self.terminal_command(args[0]))
         self.connection.on("downloadFile", lambda args: self.download_file(args[0]))
-
+        self.connection.on("requestHistory", lambda args: self.requestHistory(args[0]))
         # region Not implemented event handlers
         self.connection.on(
             "getEndpoints", lambda response: self.not_implemented("getEndpoints"))
@@ -334,8 +334,6 @@ class microServiceBusHandler(BaseService):
         self.connection.on("uploadSyslogs", lambda response: self.not_implemented("uploadSyslogs"))
         self.connection.on(
             "resendHistory", lambda response: self.not_implemented("resendHistory"))
-        self.connection.on(
-            "requestHistory", lambda response: self.requestHistory("requestHistory"))
         self.connection.on(
             "transferToPrivate", lambda response: self.not_implemented("transferToPrivate"))
         self.connection.on(
@@ -498,9 +496,8 @@ class microServiceBusHandler(BaseService):
         self.settings["sas"] = token
         self.save_settings(self.settings)
         self.debug_sync(f"SAS token has been updated.")
-        #self.restart()
-    def requestHistory(self):
-        asyncio.run(self.SubmitAction("logger", "request_history", {}))
+    def requestHistory(self, req): 
+        asyncio.run(self.SubmitAction("logger", "request_history", req))
 
     def not_implemented(self, event_handler):
         asyncio.run(self.Warning(
@@ -699,7 +696,6 @@ class microServiceBusHandler(BaseService):
         os.execv(sys.executable, ['python'] + sys.argv)
     
     def restart(self):
-        asyncio.run(self.SubmitAction("*", "msb_signed_out", {}))
         asyncio.run(self.Debug("\033[93mRestarting node\033[0m"))
         
         time.sleep(1)
@@ -870,15 +866,6 @@ class microServiceBusHandler(BaseService):
         connectionId = message.message[0]["connectionId"]
         data = message.message[0]["data"]    
         self.connection.send("terminalData", [data, connectionId])
-    async def reset_async(self):
-        self.Debug("\033[93mResetting node\033[0m")
-        node_name = self.settings["nodeName"]
-        settings = {
-            "hubUri": self.base_uri
-        }
-        self.save_settings(settings)
-        os.execv(sys.executable, ['python'] + sys.argv)
-    
     async def request_history_response(self, message):
         historyData = message.message[0]    
         self.connection.send("requestHistoryDataResponse", [historyData])

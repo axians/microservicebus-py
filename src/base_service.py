@@ -124,6 +124,11 @@ class BaseService:
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
 
+    async def OnSubmitSuccess(self):
+        msg = QueueMessage(self.id, "logger", "_on_submit_success", {})
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+
     async def Track(self, message, description = None):
         if(description != None):
             message["description"] = description

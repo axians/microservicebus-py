@@ -43,15 +43,15 @@ class Logger(BaseService):
             await self.Debug(f"ADDED ENTRY TO event_history_collection")
         except Exception as e:
             await self.Debug(f"Error pushing to event_history_collection: {e}")
-            logging.error(f"Error pushing to event_history_collection: {e}")
+            await self.Warning(f"Error pushing to event_history_collection: {e}")
     
     async def _start_persist(self):
         try:
             TTL_HISTORY_TTL = 7 * 24 * 60 * 60  # one week
-            TTL_HISTORY_CHECKINTERVAL = 30 #5 * 60  # every 5 minutes
-            TTL_HISTORY_PERSISTINTERVAL = 5 * 60  # 60 minutes
+            TTL_HISTORY_CHECKINTERVAL = 5 * 60  # every 5 minutes
+            TTL_HISTORY_PERSISTINTERVAL = 5 * 60  # every 5 minutes
 
-            TTL_EXCEPTION_PERSISTINTERVAL = 30  # every 30 minutes
+            TTL_EXCEPTION_PERSISTINTERVAL = 5 * 60  # every 5 minutes
             TTL_EXCEPTION_INTERVAL = 15 * 60  # every hour
 
             self.history_collection = TTLCollection(
@@ -84,21 +84,18 @@ class Logger(BaseService):
             await self.history_collection.start_async_loops()
             await self.failed_history_collection.start_async_loops()
             await self.event_history_collection.start_async_loops()
+
             await self.Debug(f"Persisting event started")
         except Exception as e:
             await self.Debug(f"Error setting up TTL containers: {e}")
-            
-    async def msb_signed_out(self, args):
+
+    async def _on_submit_success(self, args):
         try:
-            self.event_history_collection.push(False, 'Dissconnected')
-        except Exception as e:
-            logging.error(f"Error pushing to event_history_collection: {e}")
-        
-    async def on_submit_success(self, args):
-        try:
+            print(f"on_submit_success triggered")
+            await self.Debug(f"on_submit_success triggered")
             self.history_collection.push(True)
         except Exception as e:
-            logging.error(f"Error pushing to history_collection: {e}")
+            await self.Warning(f"Error pushing to history_collection: {e}")
 
     async def StateUpdate(self, message):
         state = message.message[0]
@@ -193,10 +190,16 @@ class Logger(BaseService):
 
     async def request_history(self, message):
        try:
-            logging.info(f"request_history called")
-            history_collection = _history_collection.filter_collection(startdate, enddate, 'hour')
-            failed_history_collection = _failed_history_collection.filter_collection(startdate, enddate, 'hour')
-            event_history_collection = _event_history_collection.filter_collection(startdate, enddate, 'hour')
+            await self.Debug(f"request_history called")
+            msg = message.message[0]
+
+            startdate = msg["startdate"]
+            enddate = msg["enddate"]
+            conn_id = msg["connId"]
+            
+            history_collection = self.history_collection.filter_collection(startdate, enddate, 'hour')
+            failed_history_collection = self.failed_history_collection.filter_collection(startdate, enddate, 'hour')
+            event_history_collection = self.event_history_collection.filter_collection(startdate, enddate, 'hour')
 
             history = {
                     'connId': conn_id,
@@ -208,7 +211,7 @@ class Logger(BaseService):
             await self.SubmitAction("msb", "request_history_response", history)
 
        except Exception as e:
-            logging.error(f"Error pushing to _request_history: {e}")
+            await self.Warning(f"Error calling _request_history: {e}")
        
 
 class bcolors:

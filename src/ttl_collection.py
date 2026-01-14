@@ -27,17 +27,10 @@ class TTLCollection:
                 f.write('[]')
         self._restore()
         
-        print(f"TTLCollection initialized with TTL: {ttl} ms, Check Period: {check_period} s, Persist Period: {persist_period}")
+        #print(f"TTLCollection initialized with TTL: {ttl} ms, Check Period: {check_period} s, Persist Period: {persist_period}")
 
     def add_event_listener(self, listener: callable):
         self._event_listeners.append(listener)
-
-    def _trigger_event(self, message: str):
-        for listener in self._event_listeners:
-            try:
-                asyncio.run(listener(message))
-            except Exception as e:
-                print(f"Error in event listener: {e}")
 
     async def start_async_loops(self):
         asyncio.create_task(self.async_check_loop())
@@ -46,21 +39,19 @@ class TTLCollection:
     async def async_check_loop(self):
         while True:
             try:
-                print("Running async_check_loop")
                 self._check()
             except Exception as e:
                 print(f"Error in async_check_loop: {e}")
-            print(f"async sleeping for {self.options['checkPeriod']} seconds")
+
             await asyncio.sleep(self.options['checkPeriod'])
-            print("async woke up from sleep")
 
     async def async_persist_loop(self):
         while True:
             try:
-                print("Running async_persist_loop")
                 self._persist()
             except Exception as e:
                 print(f"Error in async_persist_loop: {e}")
+                
             await asyncio.sleep(self.options['persistPeriod'])
 
     def _restore(self):
@@ -74,26 +65,22 @@ class TTLCollection:
 
     def _persist(self):
         try:
-            print("Running TTLCollection _persist...")
             with open(self.file_name, 'w', encoding='utf-8') as f:
                 json.dump(self._collection, f)
         except Exception as e:
             print(f'Unable to persist TTL Collection: {e}')
 
     def _check(self):
-        print("Running TTLCollection _check...")
         if len(self._collection) > self.MAXCOLLECTIONCOUNT:
             del_count = len(self._collection) - self.MAXCOLLECTIONCOUNT
             msg = f'History exceeded max length. Removing {del_count} items'
-            self._trigger_event(msg)
+            print(msg)
             self._collection = self._collection[del_count:]
         first_none_expired = next((i for i, el in enumerate(self._collection) if not self._has_expired(el)), None)
         if first_none_expired is not None and first_none_expired > 0:
             msg = f'Removed {first_none_expired} expired items from collection'
-            self._trigger_event(msg)
+            print(msg)
             self._collection = self._collection[first_none_expired:]
-        
-        self._trigger_event("TTLCollection check completed")
 
     def _has_expired(self, element: dict) -> bool:
         return element['expire'] < int(time.time() * 1000)
