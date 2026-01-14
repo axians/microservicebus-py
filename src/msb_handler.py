@@ -335,7 +335,7 @@ class microServiceBusHandler(BaseService):
         self.connection.on(
             "resendHistory", lambda response: self.not_implemented("resendHistory"))
         self.connection.on(
-            "requestHistory", lambda response: self.not_implemented("requestHistory"))
+            "requestHistory", lambda response: self.requestHistory("requestHistory"))
         self.connection.on(
             "transferToPrivate", lambda response: self.not_implemented("transferToPrivate"))
         self.connection.on(
@@ -499,6 +499,8 @@ class microServiceBusHandler(BaseService):
         self.save_settings(self.settings)
         self.debug_sync(f"SAS token has been updated.")
         #self.restart()
+    def requestHistory(self):
+        asyncio.run(self.SubmitAction("logger", "request_history", {}))
 
     def not_implemented(self, event_handler):
         asyncio.run(self.Warning(
@@ -697,6 +699,7 @@ class microServiceBusHandler(BaseService):
         os.execv(sys.executable, ['python'] + sys.argv)
     
     def restart(self):
+        asyncio.run(self.SubmitAction("*", "msb_signed_out", {}))
         asyncio.run(self.Debug("\033[93mRestarting node\033[0m"))
         
         time.sleep(1)
@@ -867,6 +870,8 @@ class microServiceBusHandler(BaseService):
         connectionId = message.message[0]["connectionId"]
         data = message.message[0]["data"]    
         self.connection.send("terminalData", [data, connectionId])
-    
+    async def request_history_response(self, message):
+        historyData = message.message[0]    
+        self.connection.send("requestHistoryDataResponse", [historyData])
     # endregion
     
