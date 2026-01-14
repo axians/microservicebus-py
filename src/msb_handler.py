@@ -870,6 +870,15 @@ class microServiceBusHandler(BaseService):
         connectionId = message.message[0]["connectionId"]
         data = message.message[0]["data"]    
         self.connection.send("terminalData", [data, connectionId])
+    async def reset_async(self):
+        self.Debug("\033[93mResetting node\033[0m")
+        node_name = self.settings["nodeName"]
+        settings = {
+            "hubUri": self.base_uri
+        }
+        self.save_settings(settings)
+        os.execv(sys.executable, ['python'] + sys.argv)
+    
     async def request_history_response(self, message):
         historyData = message.message[0]    
         self.connection.send("requestHistoryDataResponse", [historyData])
