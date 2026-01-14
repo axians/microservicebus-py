@@ -52,11 +52,9 @@ class BaseService:
             
             if settings["deviceState"]["desired"]["msbConfig"] != None:
                 uri = settings["deviceState"]["desired"]["msbConfig"]["uri"]
-                #await self.Debug(f"uri: {uri}")
                 respose = session.get(uri)
                 if respose.status_code == 200:
                     config = respose.json()
-                    #await self.Debug("Configuration fetched")
                     return config
                 else:
                     await self.ThrowError(f"Error fetching configuration: {respose.status_code}")
