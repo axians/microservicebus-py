@@ -8,7 +8,7 @@ class TTLCollection:
     TTLCollection provides a time-to-live collection with periodic persistence and expiration checks.
     Items are grouped, labeled, and can be aggregated or filtered by time and group.
     """
-    MAXCOLLECTIONCOUNT = 10000
+    MAXCOLLECTIONCOUNT = 10000 
     
     def __init__(self, persist_dir: str, persist_file_name: str, ttl: int, check_period: int, persist_period: int):
         self._event_listeners = []
@@ -27,7 +27,7 @@ class TTLCollection:
                 f.write('[]')
         self._restore()
         
-        #print(f"TTLCollection initialized with TTL: {ttl} ms, Check Period: {check_period} s, Persist Period: {persist_period}")
+        print(f"TTLCollection initialized with TTL: {ttl} ms, Check Period: {check_period} s, Persist Period: {persist_period}")
 
     def add_event_listener(self, listener: callable):
         self._event_listeners.append(listener)
@@ -65,34 +65,45 @@ class TTLCollection:
 
     def _persist(self):
         try:
+            print(f'Persisting TTL Collection with {len(self._collection)} items to {self.file_name}')
             with open(self.file_name, 'w', encoding='utf-8') as f:
                 json.dump(self._collection, f)
         except Exception as e:
             print(f'Unable to persist TTL Collection: {e}')
 
     def _check(self):
-        if len(self._collection) > self.MAXCOLLECTIONCOUNT:
+        print(f"Checking TTLCollection with {len(self._collection)} items")
+        
+        if len(self._collection) > self.MAXCOLLECTIONCOUNT: 
             del_count = len(self._collection) - self.MAXCOLLECTIONCOUNT
             msg = f'History exceeded max length. Removing {del_count} items'
             print(msg)
             self._collection = self._collection[del_count:]
+
         first_none_expired = next((i for i, el in enumerate(self._collection) if not self._has_expired(el)), None)
+        
         if first_none_expired is not None and first_none_expired > 0:
-            msg = f'Removed {first_none_expired} expired items from collection'
+            msg = f'Removed {first_none_expired} expired items from {self.options["persistFileName"]}'
             print(msg)
             self._collection = self._collection[first_none_expired:]
 
+        print(f"...TTLCollection length: {len(self._collection)} items")
+
     def _has_expired(self, element: dict) -> bool:
-        return element['expire'] < int(time.time() * 1000)
+        now = int(time.time() * 1000)
+        exprired = element['expire'] < now
+        if exprired:
+            print(f"Item expired: {element} at {now}")
+        return exprired
 
     def push(self, element: Any, label: str = "", group: str = ""):
         self._collection.append({
             'created': int(time.time() * 1000),
             'label': label if label is not None else "",
             'group': group if group is not None else "",
-            'expire': int(time.time() * 1000) + self.options['ttl'],
+            'expire': int(time.time() * 1000) + self.options['ttl'] * 1000,
             'val': element
-        })
+        })  
 
     def push_unique(self, element: Any, label: str, group: str):
         item = next((i for i in self._collection if i['label'] == label and i['group'] == group), None)

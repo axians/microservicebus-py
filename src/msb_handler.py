@@ -124,7 +124,6 @@ class microServiceBusHandler(BaseService):
         with open(self.msb_settings_path, 'w') as settings_file:
             json.dump(settings, settings_file)
             self.settings = settings
-            self.printf("Settings saved")
 
     async def sign_in(self, settings, first_sign_in):
         if(first_sign_in == True):
@@ -496,6 +495,7 @@ class microServiceBusHandler(BaseService):
         self.settings["sas"] = token
         self.save_settings(self.settings)
         self.debug_sync(f"SAS token has been updated.")
+        #self.restart()
     def requestHistory(self, req): 
         asyncio.run(self.SubmitAction("logger", "request_history", req))
 
@@ -513,7 +513,7 @@ class microServiceBusHandler(BaseService):
     
     def connected(self):
         asyncio.run(self.Debug("\033[95mConnected\033[0m"))
-        
+        asyncio.run(self.OnEvent("Connected"))
         sas_exists = "sas" in self.settings
         if(sas_exists == False):
             asyncio.run(self.Debug("Create node using mac address"))
@@ -532,26 +532,12 @@ class microServiceBusHandler(BaseService):
 
     def disconnected(self):
         asyncio.run(self.Debug("\033[95mDisconnected\033[0m"))
+        asyncio.run(self.OnEvent("Disconnected"))
         self._connected = False
-        #self._reconnect = True
  
     def reconnected(self):
         asyncio.run(self.Debug("\033[95mReconnected\033[0m"))
-        # if(self._reconnect == True):
-        #     # Restarting is in progress, do nothing
-        #     return
-    
-        # asyncio.run(self.Debug("Stopping hub connection"))
-        # # self.restarting = True
-        # self.connection.stop()
-        # self._reconnect = True
-        # def func_wrapper():
-        #     asyncio.run(self.Debug("Restarting hub connection"))
-        #     self.connection.start()
-
-        # t = threading.Timer(20, func_wrapper)
-        # t.start()
-        # asyncio.run(self.Debug("Restarting connection in 20 seconds"))
+        asyncio.run(self.OnEvent("Reconnected"))
   
     def send_heartbeat(self):
         if self._missedheartbeat > 1:
@@ -596,7 +582,7 @@ class microServiceBusHandler(BaseService):
         asyncio.run(self.ThrowError(f"HUB ERROR: {message[0]}"))
         logging.error(f"[msb] \033[91mERROR:\033[0m {message[0]}")
         self.printf(f"HUB ERROR: {message[0]}")
-        
+        asyncio.run(self.OnFailure(f"HUB ERROR: {message[0]}"))
         time.sleep(1)
 
         # create_node_invalid_request = 1,

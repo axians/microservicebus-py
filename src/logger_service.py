@@ -19,10 +19,6 @@ class Logger(BaseService):
 
         super(Logger, self).__init__(id, queue)
 
-    def _on_ttl_event(self, message):
-        print(f"_on_ttl_event event: {message}")
-        asyncio.run(self.Debug(f"_on_ttl_event event: {message}"))
-    
     async def Start(self):
         self.settings = self.get_settings()
         self.debug = self.settings["debug"]
@@ -35,7 +31,10 @@ class Logger(BaseService):
 
         while True:
             await asyncio.sleep(0.1)
-    
+
+    async def StateUpdate(self, message):
+        state = message.message[0]
+
     async def msb_signed_in(self, args):
         try:
             await self.Debug(f"STARTING msb_signed_in")
@@ -47,39 +46,35 @@ class Logger(BaseService):
     
     async def _start_persist(self):
         try:
-            TTL_HISTORY_TTL = 7 * 24 * 60 * 60  # one week
+            TTL = 7 * 24 * 60 * 60  # one week
             TTL_HISTORY_CHECKINTERVAL = 5 * 60  # every 5 minutes
             TTL_HISTORY_PERSISTINTERVAL = 5 * 60  # every 5 minutes
-
-            TTL_EXCEPTION_PERSISTINTERVAL = 5 * 60  # every 5 minutes
-            TTL_EXCEPTION_INTERVAL = 15 * 60  # every hour
-
+            TTL_FAILED_CHECKINTERVAL = 5 * 60  # every 5 minutes
+            TTL_FAILED_PERSISTINTERVAL = 5 * 60  # every 5 minutes
+            TTL_EVENT_CHECKINTERVAL = 5 * 60  # every 5 minutes
+            TTL_EVENT_PERSISTINTERVAL = 5 * 60  # every 5 minutes
+            
             self.history_collection = TTLCollection(
                 persist_dir=os.path.join(self.msb_dir, "history"),
                 persist_file_name="TRANSMIT_SUCCESS_HISTORY.json",
-                ttl=TTL_HISTORY_TTL,
+                ttl=TTL,
                 check_period=TTL_HISTORY_CHECKINTERVAL,
                 persist_period=TTL_HISTORY_PERSISTINTERVAL
             )
             self.failed_history_collection = TTLCollection(
                 persist_dir=os.path.join(self.msb_dir, "history"),
                 persist_file_name="TRANSMIT_FAILED_HISTORY.json",
-                ttl=TTL_HISTORY_TTL,
-                check_period=TTL_HISTORY_CHECKINTERVAL,
-                persist_period=TTL_HISTORY_PERSISTINTERVAL
+                ttl=TTL,
+                check_period=TTL_FAILED_CHECKINTERVAL,
+                persist_period=TTL_FAILED_PERSISTINTERVAL
             )
             self.event_history_collection = TTLCollection(
                 persist_dir=os.path.join(self.msb_dir, "history"),
                 persist_file_name="TRANSMIT_EVENTS_HISTORY.json",
-                ttl=TTL_HISTORY_TTL,
-                check_period=TTL_HISTORY_CHECKINTERVAL,
-                persist_period=TTL_EXCEPTION_PERSISTINTERVAL
+                ttl=TTL,
+                check_period=TTL_EVENT_CHECKINTERVAL,
+                persist_period=TTL_EVENT_PERSISTINTERVAL
             )
-
-            # Register event listeners
-            self.history_collection.add_event_listener(self._on_ttl_event)
-            self.failed_history_collection.add_event_listener(self._on_ttl_event)
-            self.event_history_collection.add_event_listener(self._on_ttl_event)
             
             await self.history_collection.start_async_loops()
             await self.failed_history_collection.start_async_loops()
@@ -91,14 +86,23 @@ class Logger(BaseService):
 
     async def _on_submit_success(self, args):
         try:
-            print(f"on_submit_success triggered")
-            await self.Debug(f"on_submit_success triggered")
             self.history_collection.push(True)
         except Exception as e:
             await self.Warning(f"Error pushing to history_collection: {e}")
+    
+    async def _on_event(self, args):
+        try:
+            event = args.message[0]
+            self.event_history_collection.push(False, event)
+        except Exception as e:
+            await self.Warning(f"Error pushing to history_collection: {e}")
 
-    async def StateUpdate(self, message):
-        state = message.message[0]
+    async def _on_failure(self, args):
+        try:
+            event = args.message[0]
+            self.failed_history_collection.push(False, event)
+        except Exception as e:
+            await self.Warning(f"Error pushing to history_collection: {e}")
 
     async def _change_debug(self, message):
         self.debug = message.message[0]
