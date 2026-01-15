@@ -128,6 +128,16 @@ class BaseService:
         msg = QueueMessage(self.id, "logger", "_on_submit_success", {})
         task = asyncio.create_task(self.queue.put(msg))
         await asyncio.sleep(0)
+    
+    async def OnEvent(self, message):
+        msg = QueueMessage(self.id, "logger", "_on_event", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
+    
+    async def OnFailure(self, message):
+        msg = QueueMessage(self.id, "logger", "_on_failure", message)
+        task = asyncio.create_task(self.queue.put(msg))
+        await asyncio.sleep(0)
 
     async def Track(self, message, description = None):
         if(description != None):
