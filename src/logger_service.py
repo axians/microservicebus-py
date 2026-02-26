@@ -37,9 +37,7 @@ class Logger(BaseService):
 
     async def msb_signed_in(self, args):
         try:
-            await self.Debug(f"STARTING msb_signed_in")
             self.event_history_collection.push(False, 'Connected')
-            await self.Debug(f"ADDED ENTRY TO event_history_collection")
         except Exception as e:
             await self.Debug(f"Error pushing to event_history_collection: {e}")
             await self.Warning(f"Error pushing to event_history_collection: {e}")
@@ -108,7 +106,7 @@ class Logger(BaseService):
         self.debug = message.message[0]
  
     async def _debug(self, message):
-       logging.warning(f"[{message.source}] {bcolors.OKGREEN}DEGUG:{bcolors.ENDC} {message.message[0]}")
+       logging.warning(f"[{message.source}] {bcolors.OKGREEN}DEBUG:{bcolors.ENDC} {message.message[0]}")
        if self.debug:
            await self.SubmitAction("msb", "_debug", message.message[0])
     
